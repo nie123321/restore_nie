@@ -184,3 +184,19 @@ $demoPython = 'M:\Anaconda_envs\envs\retinexformer\python.exe'
 队列先用已有 D 的最佳验证 L1 权重补齐 200 对验证集四指标，再自动依次完成 A（direct/off）、B（structured/off）、C（structured/static）各 10,000 步训练及最佳验证权重的四指标评估。三轮统一 batch 8、seed 100、整图、AdamW、L1、2e-4 至 2e-6 余弦衰减；每 500 步验证，每 1,000 步保留独立权重。D 不重新训练，本队列不追加测试集评估。
 
 `queue_status.json` 记录当前组、阶段和进程，`logs/` 记录每组训练、推理和指标计算。每完成一组，`COMPARISON.md` 与 `comparison.csv` 自动更新。用于执行的模型、训练和评估代码保存在队列的 `code/` 快照，哈希与共同配置记在 `queue_contract.json`。检查队列时同时读取各训练目录的 `status.json` / `loss.jsonl`，其中的步数比队列阶段记录更细。
+
+## RGB 交互输出头（提议，尚未验证）
+
+`--output-mode rgb_interaction` 在共享解码器 `decoder0` 之后使用 `RGBInteractionHead`，并且只在这个模式中代替原来的单层 `direct_head`。编码器、瓶颈空间融合、解码器、训练配方、读图方式和数据划分都不改。默认仍是 `structured`。`direct` 与 `structured` 的结构、初始化顺序和配置三项（`width`、`spectral_mode`、`output_mode`）保持原样。A 对照仍是 `--output-mode direct --spectral-mode off`。这个新实验的开关是 `--output-mode rgb_interaction --spectral-mode off`。
+
+共享特征 `F` 不会被当成 RGB。R、G、B 各有一条参数独立的分支：把 `F` 与输入的对应通道拼接，width 为 24 时是 25 通道，再经过 3×3 卷积到 8 通道、GELU、3×3 卷积到 8 通道、GELU，也就是 25→8→8。三条分支拼成 24 通道。一个 1×1 卷积在这 24 通道上做可学习的特征交换，并按目标颜色切回 8 通道；另一个 1×1 卷积经过 sigmoid，得到每个目标颜色一个空间门控，再广播到该颜色的 8 个特征通道。每个颜色是自身分支加上门控后的交换特征，然后用各自的 3×3 卷积收成 1 个残差。输出是输入加上这三个残差，网络里不 clamp。
+
+原来的 direct 头是一次 3×3 卷积，直接从 `F` 预测三通道残差。这里每个颜色单独提取特征，并且可以按门控使用其他颜色分支的结果。只有最后三个残差卷积的权重和偏置初始化为 0，因此一开始仍是恒等映射；分支、交换层和门控按普通方式初始化，并且可训练。全局颜色和空间增益与 direct 一样保持中性，辅助输出里的亮度、色度残差仍由这个加性 RGB 残差分解。推理只依赖输入图像，不使用 GT、掩膜、颜色区域标签，也不固定放大蓝通道。checkpoint 仍用上述三项配置重建网络，从而在推理和恢复时选中这个输出头。
+
+这是受逐通道恢复启发的提议，不是 LYT 或 CSEC 的逐字复现，也还没有在真实数据上验证效果。
+
+下面是一条尚未执行的训练命令示例。目录 `runs/rgb_interaction_10k_seed100` 目前没有使用，这条命令也不会覆盖已有实验结果。AdamW、未裁剪编码 RGB 上的 L1、梯度裁剪 1 和 CUDA AMP 沿用现有 `train` 配方。学习率从 2e-4 余弦衰减到 2e-6。
+
+```powershell
+& $demoPython "$demoRoot\run_demo.py" train --run-dir "$demoRoot\runs\rgb_interaction_10k_seed100" --output-mode rgb_interaction --spectral-mode off --steps 10000 --batch-size 8 --lr 0.0002 --lr-schedule cosine --min-lr 0.000002 --seed 100 --val-every 500 --best-metric l1 --save-every 1000 --device cuda
+```

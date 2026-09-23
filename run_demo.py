@@ -182,7 +182,9 @@ def train(args):
         "workers": args.workers, "val_every": args.val_every, "save_every": args.save_every,
         "device": str(device), "loss": "L1 on unclamped encoded RGB",
         "image_policy": "whole image, no resize/crop/augmentation",
-        "val_policy": "image-equal raw L1 and clamped RGB float PSNR (MSE floor 1e-12); no GT mean",
+        "best_metric": args.best_metric,
+        "val_policy": "image-equal raw L1 and clamped RGB float PSNR (MSE floor 1e-12); no GT mean; "
+                      f"best_val.pt selected by {'minimum raw L1' if args.best_metric == 'l1' else 'maximum clamped RGB float PSNR'}",
         "resume_policy": "exact epoch/batch shuffle and saved RNG; backend bitwise determinism not guaranteed",
     }
     checkpoint = None
@@ -191,7 +193,8 @@ def train(args):
         previous = dict(checkpoint["config"])
         previous.setdefault("lr_schedule", "constant")
         previous.setdefault("min_lr", 2e-6)
-        keys = ["model", "data_root", "batch_size", "seed", "lr", "weight_decay", "amp", "grad_clip", "lr_schedule"]
+        previous.setdefault("best_metric", "l1")
+        keys = ["model", "data_root", "batch_size", "seed", "lr", "weight_decay", "amp", "grad_clip", "lr_schedule", "best_metric"]
         if args.lr_schedule == "cosine":
             keys.extend(["min_lr", "steps"])
         for key in keys:
@@ -265,8 +268,9 @@ def train(args):
             improved = False
             if val_loader is not None and (step % args.val_every == 0 or step == args.steps):
                 row.update(validate(model, val_loader, device))
-                if best_val is None or row["val_l1"] < best_val:
-                    best_val, improved = row["val_l1"], True
+                score = row["val_l1"] if config["best_metric"] == "l1" else row["val_psnr_rgb_float"]
+                if best_val is None or (score < best_val if config["best_metric"] == "l1" else score > best_val):
+                    best_val, improved = score, True
             log.write(json.dumps(row, allow_nan=False) + "\n")
             log.flush()
             if step == start_step + 1 or step % args.log_every == 0 or step == args.steps:
@@ -283,7 +287,8 @@ def train(args):
                 if improved:
                     atomic_save(state, run / "best_val.pt")
     write_status(run, "complete" if stop_step == args.steps else "bounded_stop", stop_step, args.steps,
-                 best_val_l1=best_val,
+                 **{("best_val_l1" if config["best_metric"] == "l1" else "best_val_psnr"): best_val,
+                    "best_metric": config["best_metric"]},
                  peak_allocated_mib=torch.cuda.max_memory_allocated(device) / 2**20 if amp else None)
 
 
@@ -334,12 +339,16 @@ def main():
     training.add_argument("--workers", type=int, default=0)
     training.add_argument("--width", type=int, default=24)
     training.add_argument("--spectral-mode", choices=["conditional", "static", "off"], default="conditional")
-    training.add_argument("--output-mode", choices=["structured", "direct"], default="structured")
+    training.add_argument("--output-mode", choices=["structured", "direct", "rgb_interaction"],
+                          default="structured",
+                          help="Output parameterization. rgb_interaction is the per-colour gated residual head.")
     training.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True)
     training.add_argument("--device", default="auto")
     training.add_argument("--resume", type=Path)
     training.add_argument("--val-every", type=int, default=0,
                           help="0 disables validation; positive values evaluate full val at this interval")
+    training.add_argument("--best-metric", choices=["l1", "psnr"], default="l1",
+                          help="Metric that decides best_val.pt. Training loss stays L1.")
     training.add_argument("--save-every", type=int, default=100)
     training.add_argument("--log-every", type=int, default=10)
     training.set_defaults(function=train)

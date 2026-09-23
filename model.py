@@ -135,6 +135,61 @@ class ConditionalSpectralBlock(nn.Module):
         return x + self.residual_scale * self.project_out(fused), weights
 
 
+class RGBInteractionHead(nn.Module):
+    """Per-colour residual on shared features plus the input image.
+
+    Each branch is Conv3x3, GELU, Conv3x3, GELU with fixed width 8.
+    A 1x1 mix exchanges the concatenated branches and a sigmoid 1x1 gate
+    scales that mix per destination colour. Only the final residual
+    convolutions are zero-initialized. This is a proposed adaptation,
+    not a LYT or CSEC reproduction.
+    """
+
+    def __init__(self, width: int):
+        super().__init__()
+        branch = 8
+        self.branch_width = branch
+        branches = []
+        for _ in range(3):
+            branches.append(nn.Sequential(
+                nn.Conv2d(width + 1, branch, 3, padding=1),
+                nn.GELU(),
+                nn.Conv2d(branch, branch, 3, padding=1),
+                nn.GELU(),
+            ))
+        self.branches = nn.ModuleList(branches)
+        self.mix = nn.Conv2d(3 * branch, 3 * branch, 1)
+        self.gate = nn.Conv2d(3 * branch, 3, 1)
+        self.residual = nn.ModuleList(
+            nn.Conv2d(branch, 1, 3, padding=1) for _ in range(3)
+        )
+        for layer in self.residual:
+            nn.init.zeros_(layer.weight)
+            nn.init.zeros_(layer.bias)
+
+    def forward(self, feature: Tensor, image: Tensor) -> Tensor:
+        if (feature.ndim != 4 or image.ndim != 4 or image.shape[1] != 3
+                or image.shape[0] != feature.shape[0]
+                or image.shape[-2:] != feature.shape[-2:]):
+            raise ValueError("Expected matching NCHW feature and RGB image")
+        parts = []
+        for index, branch in enumerate(self.branches):
+            channel = image[:, index:index + 1].to(dtype=feature.dtype)
+            parts.append(branch(torch.cat((feature, channel), dim=1)))
+        fused = torch.cat(parts, dim=1)
+        mixed = self.mix(fused)
+        gates = torch.sigmoid(self.gate(fused)).to(dtype=fused.dtype)
+        channels = self.branch_width
+        deltas = []
+        for index, layer in enumerate(self.residual):
+            start = index * channels
+            own = fused[:, start:start + channels]
+            cross = mixed[:, start:start + channels]
+            updated = own + gates[:, index:index + 1] * cross
+            deltas.append(layer(updated))
+        return torch.cat(deltas, dim=1)
+
+
 class EnhancementDemo(nn.Module):
     """RGB [0,1] in, unclamped RGB out; no GT or region masks at inference.
 
@@ -142,6 +197,9 @@ class EnhancementDemo(nn.Module):
                             + additive_luminance + zero_luminance_chroma.
     The formula operates on encoded RGB, not radiometrically linear sensor data.
     These terms are computational controls, not identifiable physical factors.
+    Direct mode adds one 3x3 residual. rgb_interaction uses three colour
+    branches, a gated mix and per-colour residuals. Gains stay neutral in
+    both, and neither output is clamped.
     """
 
     def __init__(self, width: int = 24, spectral_mode: str = "conditional",
@@ -149,7 +207,7 @@ class EnhancementDemo(nn.Module):
         super().__init__()
         if width < 4:
             raise ValueError("width must be >= 4")
-        if output_mode not in {"structured", "direct"}:
+        if output_mode not in {"structured", "direct", "rgb_interaction"}:
             raise ValueError(f"Unsupported output mode: {output_mode}")
         self.config = dict(width=width, spectral_mode=spectral_mode, output_mode=output_mode)
         self.output_mode = output_mode
@@ -184,9 +242,12 @@ class EnhancementDemo(nn.Module):
             self.chroma_head = nn.Conv2d(width, 2, 3, padding=1)
             heads = (self.global_color_head, self.gain_head,
                      self.luminance_head, self.chroma_head)
-        else:
+        elif output_mode == "direct":
             self.direct_head = nn.Conv2d(width, 3, 3, padding=1)
             heads = (self.direct_head,)
+        else:
+            self.interaction_head = RGBInteractionHead(width)
+            heads = ()
         for head in heads:
             nn.init.zeros_(head.weight)
             nn.init.zeros_(head.bias)
@@ -236,7 +297,10 @@ class EnhancementDemo(nn.Module):
                                                chroma_coordinates)
             output = coarse + luminance_residual + chroma_residual
         else:
-            residual = self.direct_head(feature).float()
+            if self.output_mode == "rgb_interaction":
+                residual = self.interaction_head(feature, x).float()
+            else:
+                residual = self.direct_head(feature).float()
             luminance_residual = (residual * self.luminance_weights).sum(dim=1, keepdim=True)
             chroma_residual = residual - luminance_residual
             output = x + residual
