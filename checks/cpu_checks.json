@@ -1,0 +1,152 @@
+{
+  "device": "cpu",
+  "parameters": 1253715,
+  "arch_version": "deep_a_v1",
+  "passed": true,
+  "checks": [
+    {
+      "name": "architecture",
+      "passed": true,
+      "sizes": {
+        "e0": [
+          2,
+          24,
+          224,
+          448
+        ],
+        "e1": [
+          2,
+          48,
+          112,
+          224
+        ],
+        "e2": [
+          2,
+          96,
+          56,
+          112
+        ],
+        "e3": [
+          2,
+          192,
+          28,
+          56
+        ],
+        "d2": [
+          2,
+          96,
+          56,
+          112
+        ],
+        "d1": [
+          2,
+          48,
+          112,
+          224
+        ],
+        "d0": [
+          2,
+          24,
+          224,
+          448
+        ],
+        "out": [
+          2,
+          3,
+          224,
+          448
+        ]
+      },
+      "fusion_count": 1,
+      "gated_blocks": {
+        "enc0": 1,
+        "enc1": 2,
+        "enc2": 2,
+        "enc3": 2,
+        "dec2": 2,
+        "dec1": 2,
+        "dec0": 1
+      },
+      "parameters": 1253715
+    },
+    {
+      "name": "shapes_finite",
+      "passed": true,
+      "normal": {
+        "shape": [
+          16,
+          20
+        ],
+        "ok": true
+      },
+      "odd": {
+        "shape": [
+          5,
+          7
+        ],
+        "ok": true
+      },
+      "unit": {
+        "shape": [
+          1,
+          1
+        ],
+        "ok": true
+      }
+    },
+    {
+      "name": "identity_head",
+      "passed": true,
+      "identity_max_error": 0.0,
+      "unclamped": true
+    },
+    {
+      "name": "spatial_fusion_match",
+      "passed": true,
+      "forward_max_error": 0.0,
+      "backward_max_error": 0.0
+    },
+    {
+      "name": "key_gradients",
+      "passed": true,
+      "groups": {
+        "down3": true,
+        "enc3": true,
+        "fusion": true,
+        "dec2": true,
+        "dec1": true,
+        "dec0": true,
+        "head": true
+      }
+    },
+    {
+      "name": "serialize_resume",
+      "passed": true,
+      "infer_max_error": 0.0,
+      "lr_match": true,
+      "param_max_error": 0.0,
+      "sample_order_ok": true
+    },
+    {
+      "name": "manifest_errors",
+      "passed": true,
+      "cases": {
+        "ok_200": true,
+        "short": true,
+        "duplicate": true,
+        "missing_file": true,
+        "gt_outside_split": true
+      }
+    },
+    {
+      "name": "entry_help",
+      "passed": true,
+      "commands": {
+        "train --help": true,
+        "infer --help": true,
+        "M:\\picture data\\cholec80_t\\code\\cut\\endo_deep_a\\eval_val.py --help": true
+      }
+    }
+  ],
+  "cuda_full_shape": "not run; start with verify.py --device cuda --full-shape"
+}
