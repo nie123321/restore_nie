@@ -1,0 +1,73 @@
+{
+  "device": "cpu",
+  "arch_version": "prior_a_v1",
+  "passed": true,
+  "checks": [
+    {
+      "name": "priors_and_count",
+      "passed": true,
+      "formula_max_error": 2.9802322387695312e-08,
+      "parameters": 208027,
+      "fft_parameters": [],
+      "gamma_shape": [
+        1,
+        96,
+        2,
+        2
+      ],
+      "structure_shape": [
+        1,
+        96,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "shared_init",
+      "passed": true,
+      "max_error": 0.0,
+      "missing": [],
+      "mismatch": [],
+      "extra_count": 16
+    },
+    {
+      "name": "zero_prior_match",
+      "passed": true,
+      "encoder2": 0.0,
+      "spectral": 0.0,
+      "decoder0": 0.0,
+      "nonzero_head": 0.0
+    },
+    {
+      "name": "conditions",
+      "passed": true,
+      "luma_effect": 0.0028342753648757935,
+      "structure_effect": 0.0019066818058490753,
+      "last_layer_updated": true,
+      "early_layer_updated": true,
+      "structure_grad": true
+    },
+    {
+      "name": "sizes_and_save",
+      "passed": true,
+      "shapes": {
+        "32x48": true,
+        "33x49": true
+      },
+      "restore_error": 0.0,
+      "sample_order_ok": true
+    },
+    {
+      "name": "entry_help",
+      "passed": true,
+      "commands": {
+        "train --help": true,
+        "infer --help": true,
+        "M:\\picture data\\cholec80_t\\code\\cut\\endo_prior_a\\eval_val.py --help": true
+      }
+    }
+  ],
+  "gpu_amp": "not run",
+  "training": "not run",
+  "val_test_metrics": "not run"
+}
