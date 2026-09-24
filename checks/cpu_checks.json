@@ -1,0 +1,123 @@
+{
+  "device": "cpu",
+  "parameters": 263331,
+  "arch_version": "star_a_v1",
+  "official_source_sha256": "9ee5e3644df5ebb65b1ddf9b488d2a0832c00c879ffcac75e9144d519ad5d6e0",
+  "passed": true,
+  "checks": [
+    {
+      "name": "structure",
+      "passed": true,
+      "sizes": {
+        "e0": [
+          1,
+          24,
+          224,
+          448
+        ],
+        "e1": [
+          1,
+          48,
+          112,
+          224
+        ],
+        "bottleneck": [
+          1,
+          96,
+          56,
+          112
+        ],
+        "d1": [
+          1,
+          48,
+          112,
+          224
+        ],
+        "d0": [
+          1,
+          24,
+          224,
+          448
+        ],
+        "output": [
+          1,
+          3,
+          224,
+          448
+        ]
+      },
+      "gated_blocks": 3,
+      "star_blocks": 2,
+      "independent_filters": true,
+      "filters_initialized_to_one": true,
+      "parameters": 263331
+    },
+    {
+      "name": "shapes_finite",
+      "passed": true,
+      "normal": true,
+      "odd": true,
+      "unit": true
+    },
+    {
+      "name": "identity_head",
+      "passed": true,
+      "identity_max_error": 0.0,
+      "unclamped": true
+    },
+    {
+      "name": "official_star_block",
+      "passed": true,
+      "source_sha256": "9ee5e3644df5ebb65b1ddf9b488d2a0832c00c879ffcac75e9144d519ad5d6e0",
+      "forward_max_error": 0.0,
+      "backward_max_error": 0.0,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "cmu_present": true
+    },
+    {
+      "name": "trainable",
+      "passed": true,
+      "groups": {
+        "bottleneck_fmb": true,
+        "bottleneck_dffn": true,
+        "decoder_fmb": true,
+        "decoder_dffn": true,
+        "bottleneck_cmu": true,
+        "decoder_cmu": true,
+        "head": true,
+        "encoder": true
+      }
+    },
+    {
+      "name": "serialize_resume",
+      "passed": true,
+      "infer_max_error": 0.0,
+      "param_max_error": 0.0,
+      "sample_order_ok": true
+    },
+    {
+      "name": "manifest_errors",
+      "passed": true,
+      "cases": {
+        "ok_200": true,
+        "short": true,
+        "duplicate": true,
+        "gt_mismatch": true,
+        "cross_split": true,
+        "missing": true,
+        "hash_changed": true
+      }
+    },
+    {
+      "name": "entry_help",
+      "passed": true,
+      "commands": {
+        "train --help": true,
+        "infer --help": true,
+        "M:\\picture data\\cholec80_t\\code\\cut\\endo_star_a\\eval_val.py --help": true
+      }
+    }
+  ],
+  "cuda_full_shape": "not run; start with verify.py --device cuda --full-shape"
+}
