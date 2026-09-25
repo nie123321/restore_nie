@@ -1,0 +1,130 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "shapes",
+      "passed": true,
+      "counts": {
+        "local": 12,
+        "global": 2,
+        "prior_res": 12,
+        "parameters": 7145363
+      },
+      "details": {
+        "32x48": {
+          "output": true,
+          "luma_scales": [
+            [
+              32,
+              48
+            ],
+            [
+              16,
+              24
+            ],
+            [
+              8,
+              12
+            ]
+          ],
+          "structure_scales": [
+            [
+              32,
+              48
+            ],
+            [
+              16,
+              24
+            ],
+            [
+              8,
+              12
+            ]
+          ]
+        },
+        "31x47": {
+          "output": true,
+          "luma_scales": [
+            [
+              31,
+              47
+            ],
+            [
+              16,
+              24
+            ],
+            [
+              8,
+              12
+            ]
+          ],
+          "structure_scales": [
+            [
+              31,
+              47
+            ],
+            [
+              16,
+              24
+            ],
+            [
+              8,
+              12
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "boundaries",
+      "passed": true,
+      "luma_mean": 0.40000003576278687,
+      "structure_min": -2.363126516342163,
+      "structure_max": 1.7021223306655884
+    },
+    {
+      "name": "dependencies",
+      "passed": true,
+      "luma_delta": 5.841255187988281e-05,
+      "structure_delta": 1.1920928955078125e-07
+    },
+    {
+      "name": "gradients",
+      "passed": true,
+      "loss": 0.3239159882068634,
+      "groups": {
+        "luma_encoder": true,
+        "structure_encoder": true,
+        "structure_kv": true,
+        "luma_head": true,
+        "local": true,
+        "global": true,
+        "skip": true
+      }
+    },
+    {
+      "name": "attention_axes",
+      "passed": true,
+      "channel_softmax_dim": 4,
+      "spatial_softmax_dim": 3,
+      "sdpa_error": 4.76837158203125e-07
+    },
+    {
+      "name": "config",
+      "passed": true,
+      "parameters": 7145363,
+      "static_total": 7145363,
+      "restore_error": 0.0
+    },
+    {
+      "name": "help",
+      "passed": true,
+      "commands": {
+        "M:\\picture data\\cholec80_t\\code\\cut\\endo_prior_fusion_u3\\run.py --help": true,
+        "infer --help": true,
+        "M:\\picture data\\cholec80_t\\code\\cut\\endo_prior_fusion_u3\\eval_val.py --help": true,
+        "train_requires_steps": true
+      }
+    }
+  ]
+}
