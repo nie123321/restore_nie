@@ -1,0 +1,81 @@
+{
+  "arch_version": "prior_a_u3_v1",
+  "parameters": 1209789,
+  "cpu_passed": true,
+  "u3_module_max_difference": {
+    "LocalPriorBlock": 0.0,
+    "PriorSkipFusion": 0.0
+  },
+  "fixed_priors_match_u3": true,
+  "neutral_initial_output": true,
+  "input_shapes": [
+    [
+      192,
+      384
+    ],
+    [
+      224,
+      448
+    ],
+    [
+      225,
+      449
+    ]
+  ],
+  "pure_raw_L1": true,
+  "strict_state_roundtrip": true,
+  "formal_training_started": false,
+  "gpu": {
+    "passed": true,
+    "batch": 8,
+    "crop": [
+      192,
+      384
+    ],
+    "amp": true,
+    "activation_checkpointing": true,
+    "steps": [
+      {
+        "step": 1,
+        "loss": 0.17241275310516357,
+        "grad_norm": 0.808186948299408,
+        "gradients": {
+          "luma": 0.0,
+          "structure": 0.0,
+          "luma_coarse": 0.0,
+          "structure_coarse": 0.0
+        },
+        "seconds": 8.061594500002684,
+        "amp_skipped": false
+      },
+      {
+        "step": 2,
+        "loss": 0.16253316402435303,
+        "grad_norm": 0.7770133018493652,
+        "gradients": {
+          "luma": 3.7110364559111986e-08,
+          "structure": 7.209688192233443e-05,
+          "luma_coarse": 1.322181919505283e-09,
+          "structure_coarse": 3.125024704786483e-06
+        },
+        "seconds": 0.31310619998839684,
+        "amp_skipped": false
+      },
+      {
+        "step": 3,
+        "loss": 0.17562952637672424,
+        "grad_norm": 0.7999828457832336,
+        "gradients": {
+          "luma": 5.26288886248949e-07,
+          "structure": 0.00012941211753059179,
+          "luma_coarse": 2.8959208364653932e-09,
+          "structure_coarse": 5.804810371046187e-06
+        },
+        "seconds": 0.3126442000211682,
+        "amp_skipped": false
+      }
+    ],
+    "peak_allocated_mib": 1772.1982421875,
+    "peak_reserved_mib": 1858.0
+  }
+}
