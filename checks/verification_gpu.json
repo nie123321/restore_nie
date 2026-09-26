@@ -1,0 +1,159 @@
+{
+  "arch_version": "endo_prior_a_v2_1",
+  "manifest_sha256": "d969938d27c82e72bd5dce875979e4c2a6c1094c25ae1d7d1267b66e87a68797",
+  "counts": {
+    "train": 1500,
+    "val": 200,
+    "test": 300
+  },
+  "formal_training_started": false,
+  "cpu": {
+    "passed": true,
+    "parameters": 1271689,
+    "full_and_odd_shapes": [
+      [
+        17,
+        31
+      ],
+      [
+        192,
+        384
+      ],
+      [
+        224,
+        448
+      ],
+      [
+        225,
+        449
+      ]
+    ],
+    "neutral_initial_output": true,
+    "gain_and_bias_bounds": true,
+    "fixed_priors_finite": true,
+    "dark_signed_gradient_peak": 0.0008391410810872912,
+    "direction_flip_consistent": true,
+    "neighborhood_matches_unfold": true,
+    "paired_augmentation": true,
+    "resume_sampler": true,
+    "validation_no_augmentation": true,
+    "raw_loss_formula": true,
+    "rng_restore": true,
+    "default_steps": 15000
+  },
+  "gpu": {
+    "passed": true,
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch_version": "2.8.0+cu128",
+    "batch": 4,
+    "crop": [
+      192,
+      384
+    ],
+    "amp": true,
+    "activation_checkpointing": true,
+    "optimizer_updates": 5,
+    "logical_steps": 4,
+    "includes_one_repeated_resume_step": true,
+    "peak_training_allocated_mib": 952.26220703125,
+    "peak_training_reserved_mib": 1356.0,
+    "peak_including_single_val_allocated_mib": 952.26220703125,
+    "resume_max_parameter_difference": 7.450580596923828e-08,
+    "strict_resume_rejects_crop_change": true,
+    "both_prior_encoders_and_guidance_receive_gradients": true,
+    "full_image_val_smoke_count": 1,
+    "test_images_opened": 0,
+    "steps": [
+      {
+        "step": 1,
+        "resumed": false,
+        "loss": 0.21103934943675995,
+        "loss_main": 0.192579984664917,
+        "loss_aux": 0.18459360301494598,
+        "grad_norm_before_clip": 1.165696620941162,
+        "gradients": {
+          "luma_encoder": 0.0,
+          "structure_encoder": 0.0,
+          "guided_logits": 0.0,
+          "guided_weight_features": 0.0,
+          "luma_coarse": 0.0,
+          "structure_coarse": 0.0
+        },
+        "seconds": 5.174724899989087,
+        "amp_skipped": false
+      },
+      {
+        "step": 2,
+        "resumed": false,
+        "loss": 0.16165240108966827,
+        "loss_main": 0.1469150185585022,
+        "loss_aux": 0.14737378060817719,
+        "grad_norm_before_clip": 1.1486937999725342,
+        "gradients": {
+          "luma_encoder": 0.002792641054838896,
+          "structure_encoder": 0.0004239730187691748,
+          "guided_logits": 0.0,
+          "guided_weight_features": 0.0,
+          "luma_coarse": 0.00016101029177661985,
+          "structure_coarse": 0.0
+        },
+        "seconds": 0.12597190000815317,
+        "amp_skipped": false
+      },
+      {
+        "step": 3,
+        "resumed": false,
+        "loss": 0.1910368949174881,
+        "loss_main": 0.17325270175933838,
+        "loss_aux": 0.17784196138381958,
+        "grad_norm_before_clip": 1.1975096464157104,
+        "gradients": {
+          "luma_encoder": 0.004567734897136688,
+          "structure_encoder": 0.0008146656327880919,
+          "guided_logits": 2.7580162154094978e-08,
+          "guided_weight_features": 1.4654764513011287e-08,
+          "luma_coarse": 0.00027905465685762465,
+          "structure_coarse": 0.0
+        },
+        "seconds": 0.13553790000150912,
+        "amp_skipped": false
+      },
+      {
+        "step": 3,
+        "resumed": true,
+        "loss": 0.1910368949174881,
+        "loss_main": 0.17325270175933838,
+        "loss_aux": 0.17784196138381958,
+        "grad_norm_before_clip": 1.1975096464157104,
+        "gradients": {
+          "luma_encoder": 0.004567735828459263,
+          "structure_encoder": 0.0008146656327880919,
+          "guided_logits": 2.7580162154094978e-08,
+          "guided_weight_features": 1.4654764513011287e-08,
+          "luma_coarse": 0.00027905465685762465,
+          "structure_coarse": 0.0
+        },
+        "seconds": 0.148674399999436,
+        "amp_skipped": false
+      },
+      {
+        "step": 4,
+        "resumed": true,
+        "loss": 0.14022083580493927,
+        "loss_main": 0.12668851017951965,
+        "loss_aux": 0.13532330095767975,
+        "grad_norm_before_clip": 1.2449235916137695,
+        "gradients": {
+          "luma_encoder": 0.008008617907762527,
+          "structure_encoder": 0.0011521847918629646,
+          "guided_logits": 5.7508056983124334e-08,
+          "guided_weight_features": 3.846129459361691e-08,
+          "luma_coarse": 0.00044782646000385284,
+          "structure_coarse": 1.2800482028507698e-11
+        },
+        "seconds": 0.13826030000927858,
+        "amp_skipped": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "gpu_total_mib": 12226.5625,
+  "torch_version": "2.8.0+cu128",
+  "parameters": 1271689,
+  "batch_size": 8,
+  "crop": [
+    192,
+    384
+  ],
+  "amp": true,
+  "optimizer": "AdamW",
+  "activation_checkpointing": true,
+  "optimizer_steps": 3,
+  "formal_training_started": false,
+  "manifest_sha256": "d969938d27c82e72bd5dce875979e4c2a6c1094c25ae1d7d1267b66e87a68797",
+  "peak_allocated_mib": 1871.6552734375,
+  "peak_reserved_mib": 2146.0,
+  "warm_step_seconds": [
+    0.2449106000130996,
+    0.28082019998691976
+  ],
+  "timing_scope": "forward_backward_optimizer_without_loading",
+  "nvidia_smi_after_steps": "12227 MiB, 2346 MiB, 99 %",
+  "steps": [
+    {
+      "step": 1,
+      "seconds": 5.528821699990658,
+      "loss": 0.18903250992298126,
+      "grad_norm_before_clip": 1.157076358795166,
+      "amp_skipped": false,
+      "allocated_mib": 65.9375,
+      "peak_allocated_mib": 1861.23876953125,
+      "peak_reserved_mib": 2146.0
+    },
+    {
+      "step": 2,
+      "seconds": 0.2449106000130996,
+      "loss": 0.17574156820774078,
+      "grad_norm_before_clip": 1.116163730621338,
+      "amp_skipped": false,
+      "allocated_mib": 65.9375,
+      "peak_allocated_mib": 1871.6552734375,
+      "peak_reserved_mib": 2146.0
+    },
+    {
+      "step": 3,
+      "seconds": 0.28082019998691976,
+      "loss": 0.18722748756408691,
+      "grad_norm_before_clip": 1.2045495510101318,
+      "amp_skipped": false,
+      "allocated_mib": 65.9375,
+      "peak_allocated_mib": 1871.6552734375,
+      "peak_reserved_mib": 2146.0
+    }
+  ]
+}
