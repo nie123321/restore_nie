@@ -1,0 +1,60 @@
+{
+  "run": "a_width32_whole_b8_e55_seed100_20260927",
+  "model": {
+    "width": 32,
+    "spectral_mode": "off",
+    "output_mode": "direct"
+  },
+  "parameters": 360515,
+  "training": {
+    "data_root": "M:\\picture data\\cholec80_t\\train_test",
+    "batch_size": 8,
+    "seed": 100,
+    "lr": 0.0002,
+    "min_lr": 2e-06,
+    "lr_schedule": "cosine",
+    "weight_decay": 0.0001,
+    "grad_clip": 1.0,
+    "amp": true,
+    "epochs": 55,
+    "steps": 10340,
+    "steps_per_epoch": 188,
+    "crop_size": null,
+    "image_policy": "whole image 448x224, no resize/crop/augmentation",
+    "val_every": 500,
+    "save_every": 1000,
+    "best_metric": "minimum validation raw L1",
+    "peak_allocated_mib": 4668.8173828125
+  },
+  "best_val": {
+    "step": 2000,
+    "val_l1": 0.049336239942349494,
+    "val_psnr_rgb_float": 25.0508
+  },
+  "checkpoint_sha256": "78478ee1e3d474590f3bb755009c086b48cea64a23fedb7a6e3c12f8e4074baa",
+  "test": {
+    "split": "test",
+    "samples": 300,
+    "videos": 12,
+    "precision": "FP32",
+    "quantization": "clamp [0,1], np.rint RGB uint8",
+    "input_psnr": 14.243677,
+    "output_psnr": 25.262555,
+    "input_ssim": 0.487758,
+    "output_ssim": 0.863539,
+    "input_lpips_alex": 0.341095,
+    "output_lpips_alex": 0.208566,
+    "input_ciede2000": 16.921876,
+    "output_ciede2000": 5.333527,
+    "improved": "300/300 on all four metrics",
+    "float_psnr": 25.265405368546134,
+    "raw_l1": 0.04863749036875864
+  },
+  "reference_baseline_width24_test": {
+    "output_psnr": 25.4488,
+    "output_ssim": 0.8650,
+    "output_lpips_alex": 0.2005,
+    "output_ciede2000": 5.0864
+  },
+  "notes": "runs/ and weights are not uploaded; the numbers above are the full record of this version."
+}
