@@ -1,0 +1,76 @@
+{
+  "run": "a_mdta_gtmean_l1_sigma01_whole_b8_e55_seed100_20260928",
+  "model": {
+    "width": 24,
+    "spectral_mode": "off",
+    "output_mode": "direct",
+    "bottleneck_attention": "mdta"
+  },
+  "parameters": 245719,
+  "loss": {
+    "loss_mode": "gt-mean-l1",
+    "gt_mean_sigma": 0.1,
+    "gt_mean_eps": 1e-06,
+    "gt_mean_gray_weights": [0.2989, 0.587, 0.114],
+    "weight": "clipped Bhattacharyya distance; detached",
+    "gain": "GT gray mean / prediction gray mean; differentiable",
+    "reference": "Liao et al., ICCV 2025, GT-mean loss"
+  },
+  "training": {
+    "data_root": "M:\\picture data\\cholec80_t\\train_test",
+    "batch_size": 8,
+    "seed": 100,
+    "lr": 0.0002,
+    "min_lr": 2e-06,
+    "lr_schedule": "cosine",
+    "weight_decay": 0.0001,
+    "grad_clip": 1.0,
+    "amp": true,
+    "epochs": 55,
+    "steps": 10340,
+    "steps_per_epoch": 188,
+    "crop_size": null,
+    "image_policy": "whole image 448x224, no resize/crop/augmentation",
+    "val_every": 500,
+    "save_every": 1000,
+    "best_metric": "minimum validation raw L1",
+    "peak_allocated_mib": 3686.85302734375
+  },
+  "best_val": {
+    "step": 5500,
+    "val_l1": 0.04914366229902953,
+    "val_psnr_rgb_float": 25.083547859191896
+  },
+  "checkpoint_sha256": "3205328eb5415b4a7c84b716753dcf0323c80a24bcb49139e240cb05cc65ad4f",
+  "test": {
+    "split": "test",
+    "samples": 300,
+    "videos": 12,
+    "precision": "FP32",
+    "quantization": "clamp [0,1], np.rint RGB uint8",
+    "input_psnr": 14.243677,
+    "output_psnr": 25.643097,
+    "input_ssim": 0.487758,
+    "output_ssim": 0.866133,
+    "input_lpips_alex": 0.341095,
+    "output_lpips_alex": 0.198554,
+    "input_ciede2000": 16.921876,
+    "output_ciede2000": 4.850180,
+    "float_psnr": 25.646296306629026,
+    "raw_l1": 0.0455352790777882,
+    "improved": "300/300 on all four metrics"
+  },
+  "paired_vs_baseline": {
+    "psnr": "+0.1943 +/- 0.1005 (t=1.93)",
+    "ssim": "+0.0012 +/- 0.0008 (t=1.47)",
+    "lpips_alex": "-0.0019 +/- 0.0004 (t=-4.89)",
+    "ciede2000": "-0.2362 +/- 0.0502 (t=-4.71)"
+  },
+  "paired_vs_mdta": {
+    "psnr": "+0.1398 +/- 0.0866 (t=1.61)",
+    "ssim": "+0.0005 +/- 0.0007 (t=0.78)",
+    "lpips_alex": "-0.0044 +/- 0.0004 (t=-12.42)",
+    "ciede2000": "-0.1807 +/- 0.0437 (t=-4.13)"
+  },
+  "notes": "runs/ and weights are not uploaded; the numbers above are the full record of this version. Single seed; PSNR gain is borderline significant, LPIPS/CIEDE2000 gains are significant."
+}
