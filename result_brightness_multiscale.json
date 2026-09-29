@@ -49,7 +49,41 @@
     "best_metric": "minimum validation raw L1"
   },
   "test": {
-    "status": "pending",
-    "note": "Training was still running when this branch was uploaded; val best and test four metrics will be added after completion."
+    "status": "complete",
+    "checkpoint": "step_006500.pt",
+    "checkpoint_step": 6500,
+    "checkpoint_sha256": "95cf80be5dda45d9686dbd32ce17f57db14d935c04b5158d1bb03d30ed6ed5a7",
+    "split": "test",
+    "samples": 300,
+    "videos": 12,
+    "precision": "FP32",
+    "quantization": "clamp [0,1], np.rint RGB uint8",
+    "input_psnr": 14.243677,
+    "output_psnr": 25.613425,
+    "input_ssim": 0.487758,
+    "output_ssim": 0.866891,
+    "input_lpips_alex": 0.341095,
+    "output_lpips_alex": 0.198101,
+    "input_ciede2000": 16.921876,
+    "output_ciede2000": 4.906876,
+    "float_psnr": 25.616596639250318,
+    "raw_l1": 0.046092443640033405,
+    "val_best_by_l1": {
+      "step": 4500,
+      "val_l1": 0.049385,
+      "test_psnr_at_val_best": 25.4840
+    },
+    "paired_vs_bottom_only": {
+      "psnr": "-0.0283 +/- 0.0581 (t=-0.49)",
+      "ssim": "-0.0003 (t=-0.67)",
+      "lpips_alex": "-0.0006 +/- 0.0003 (t=-1.81)",
+      "ciede2000": "+0.0334 (t=+1.05)"
+    },
+    "paired_vs_crop_control": {
+      "psnr": "-0.0795 +/- 0.0621 (t=-1.28)",
+      "ssim": "-0.0003 (t=-0.59)",
+      "lpips_alex": "-0.0021 +/- 0.0003 (t=-6.57)",
+      "ciede2000": "+0.0493 (t=+1.56)"
+    }
   }
 }
