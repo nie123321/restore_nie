@@ -1,0 +1,55 @@
+{
+  "run": "a_mdta_brightness_cross4_multiscale_gtmean_crop192x384_hv_b8_e55_seed100_20260929",
+  "model": {
+    "width": 24,
+    "spectral_mode": "off",
+    "output_mode": "direct",
+    "bottleneck_attention": "mdta",
+    "brightness_prior_attention": "multiscale-cross4"
+  },
+  "parameters": 388473,
+  "added_parameters_vs_base": 142754,
+  "added_parameters_vs_bottom_only": 55534,
+  "brightness_module": {
+    "recipe": "four-fixed-five-site-cross-attention-v1",
+    "inputs": ["shifted-power-gamma0.4-eps0.02", "gaussian5-log20", "sine-power0.2", "log20"],
+    "normalization": "fixed [0,1]; no per-image min/max",
+    "encoder_widths": [4, 16, 32, 96],
+    "sites": "two encoder sites + bottom site + two decoder sites",
+    "attention": "main Q; shared-pyramid prior K,V; independent channel cross-attention + 2xFFN at five sites",
+    "pyramid": "four maps once; existing half16 and bottom96; new full4/16/24 and half16/48 projections",
+    "residual_scale_init": 0.1,
+    "precision": "FP32 fixed maps, Q/K normalization and scores; AMP encoder/projections/FFN",
+    "supervision": "low RGB after augmentation only; GT only in the final GT-Mean loss",
+    "sources": [
+      "https://github.com/minyan8/imagine/blob/main/basicsr/models/archs/RetinexFormer_arch.py"
+    ]
+  },
+  "loss": {
+    "loss_mode": "gt-mean-l1",
+    "gt_mean_sigma": 0.1
+  },
+  "training": {
+    "epochs": 55,
+    "steps": 10340,
+    "steps_per_epoch": 188,
+    "batch_size": 8,
+    "seed": 100,
+    "lr": 0.0002,
+    "min_lr": 2e-06,
+    "lr_schedule": "cosine",
+    "weight_decay": 0.0001,
+    "grad_clip": 1.0,
+    "amp": true,
+    "crop_size": [192, 384],
+    "flip_hv": true,
+    "image_policy": "paired random crop 192x384, horizontal/vertical flip each p=0.5; val/infer whole image",
+    "val_every": 500,
+    "save_every": 500,
+    "best_metric": "minimum validation raw L1"
+  },
+  "test": {
+    "status": "pending",
+    "note": "Training was still running when this branch was uploaded; val best and test four metrics will be added after completion."
+  }
+}
