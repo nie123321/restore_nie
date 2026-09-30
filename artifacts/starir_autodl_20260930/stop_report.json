@@ -1,0 +1,215 @@
+{
+  "stopped_by_user": true,
+  "completed_optimizer_steps": 41000,
+  "planned_steps": 100000,
+  "checkpoint_validation_note": "41000 checkpoint saved before validation; that validation was interrupted by the stop request",
+  "completed_validation": [
+    {
+      "step": 1000,
+      "psnr": 24.5735,
+      "ssim": 0.9032
+    },
+    {
+      "step": 2000,
+      "psnr": 24.9674,
+      "ssim": 0.9114
+    },
+    {
+      "step": 3000,
+      "psnr": 24.8212,
+      "ssim": 0.9146
+    },
+    {
+      "step": 4000,
+      "psnr": 25.1074,
+      "ssim": 0.9113
+    },
+    {
+      "step": 5000,
+      "psnr": 25.0872,
+      "ssim": 0.9141
+    },
+    {
+      "step": 6000,
+      "psnr": 25.2508,
+      "ssim": 0.9166
+    },
+    {
+      "step": 7000,
+      "psnr": 25.0513,
+      "ssim": 0.9186
+    },
+    {
+      "step": 8000,
+      "psnr": 25.2776,
+      "ssim": 0.9161
+    },
+    {
+      "step": 9000,
+      "psnr": 25.0059,
+      "ssim": 0.9173
+    },
+    {
+      "step": 10000,
+      "psnr": 25.0852,
+      "ssim": 0.9165
+    },
+    {
+      "step": 11000,
+      "psnr": 25.1156,
+      "ssim": 0.9182
+    },
+    {
+      "step": 12000,
+      "psnr": 25.1431,
+      "ssim": 0.9183
+    },
+    {
+      "step": 13000,
+      "psnr": 24.8512,
+      "ssim": 0.9193
+    },
+    {
+      "step": 14000,
+      "psnr": 25.4265,
+      "ssim": 0.9222
+    },
+    {
+      "step": 15000,
+      "psnr": 24.8256,
+      "ssim": 0.9126
+    },
+    {
+      "step": 16000,
+      "psnr": 25.3151,
+      "ssim": 0.9185
+    },
+    {
+      "step": 17000,
+      "psnr": 24.841,
+      "ssim": 0.9191
+    },
+    {
+      "step": 18000,
+      "psnr": 25.3989,
+      "ssim": 0.9212
+    },
+    {
+      "step": 19000,
+      "psnr": 25.0281,
+      "ssim": 0.9157
+    },
+    {
+      "step": 20000,
+      "psnr": 25.4035,
+      "ssim": 0.9219
+    },
+    {
+      "step": 21000,
+      "psnr": 25.5318,
+      "ssim": 0.9202
+    },
+    {
+      "step": 22000,
+      "psnr": 25.2779,
+      "ssim": 0.9184
+    },
+    {
+      "step": 23000,
+      "psnr": 25.5213,
+      "ssim": 0.9237
+    },
+    {
+      "step": 24000,
+      "psnr": 25.0497,
+      "ssim": 0.9202
+    },
+    {
+      "step": 25000,
+      "psnr": 24.9326,
+      "ssim": 0.9175
+    },
+    {
+      "step": 26000,
+      "psnr": 25.3327,
+      "ssim": 0.9184
+    },
+    {
+      "step": 27000,
+      "psnr": 25.4227,
+      "ssim": 0.9225
+    },
+    {
+      "step": 28000,
+      "psnr": 25.6299,
+      "ssim": 0.9208
+    },
+    {
+      "step": 29000,
+      "psnr": 25.2912,
+      "ssim": 0.9166
+    },
+    {
+      "step": 30000,
+      "psnr": 25.3644,
+      "ssim": 0.9238
+    },
+    {
+      "step": 31000,
+      "psnr": 25.2331,
+      "ssim": 0.9184
+    },
+    {
+      "step": 32000,
+      "psnr": 25.2244,
+      "ssim": 0.9164
+    },
+    {
+      "step": 33000,
+      "psnr": 25.1657,
+      "ssim": 0.9178
+    },
+    {
+      "step": 34000,
+      "psnr": 25.3074,
+      "ssim": 0.9195
+    },
+    {
+      "step": 35000,
+      "psnr": 24.9776,
+      "ssim": 0.9194
+    },
+    {
+      "step": 36000,
+      "psnr": 25.3966,
+      "ssim": 0.9207
+    },
+    {
+      "step": 37000,
+      "psnr": 25.6288,
+      "ssim": 0.9187
+    },
+    {
+      "step": 38000,
+      "psnr": 25.1516,
+      "ssim": 0.92
+    },
+    {
+      "step": 39000,
+      "psnr": 25.3744,
+      "ssim": 0.9173
+    },
+    {
+      "step": 40000,
+      "psnr": 25.2129,
+      "ssim": 0.9217
+    }
+  ],
+  "best_completed_val_psnr": {
+    "step": 28000,
+    "psnr": 25.6299,
+    "ssim": 0.9208
+  },
+  "tensor_parameters": 509072,
+  "training_state_iter": 41000
+}

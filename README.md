@@ -184,3 +184,8 @@ $demoPython = 'M:\Anaconda_envs\envs\retinexformer\python.exe'
 队列先用已有 D 的最佳验证 L1 权重补齐 200 对验证集四指标，再自动依次完成 A（direct/off）、B（structured/off）、C（structured/static）各 10,000 步训练及最佳验证权重的四指标评估。三轮统一 batch 8、seed 100、整图、AdamW、L1、2e-4 至 2e-6 余弦衰减；每 500 步验证，每 1,000 步保留独立权重。D 不重新训练，本队列不追加测试集评估。
 
 `queue_status.json` 记录当前组、阶段和进程，`logs/` 记录每组训练、推理和指标计算。每完成一组，`COMPARISON.md` 与 `comparison.csv` 自动更新。用于执行的模型、训练和评估代码保存在队列的 `code/` 快照，哈希与共同配置记在 `queue_contract.json`。检查队列时同时读取各训练目录的 `status.json` / `loss.jsonl`，其中的步数比队列阶段记录更细。
+
+
+## 已保存的训练权重
+
+- [StarIR 单卡训练：41,000 步 checkpoint](artifacts/starir_autodl_20260930/README.md)：由用户要求停止，保留当前模型权重、优化器状态和配套代码；100,000 步目标未完成。
