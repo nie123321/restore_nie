@@ -25,7 +25,8 @@ from torch.utils.data import DataLoader, Dataset, Sampler
 from model import EnhancementDemo
 
 
-DEFAULT_DATA = Path(r"M:\picture data\cholec80_t\train_test")
+DEFAULT_DATA = (Path(r"M:\picture data\cholec80_t\train_test") if os.name == "nt"
+                else Path("/root/autodl-tmp/datasets/cholec80/train_test"))
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 
 
@@ -40,7 +41,7 @@ def image_files(directory: Path) -> list[Path]:
                   if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES)
 
 
-def augment_pair(low, target, crop, seed, epoch, sample_id):
+def augment_pair(low, target, crop, seed, epoch, sample_id, quarter_turn=False):
     if low.shape != target.shape:
         raise ValueError("Paired dimensions differ")
     digest = hashlib.sha256(f"prior-a-v2:{seed}:{epoch}:{sample_id}".encode()).digest()
@@ -59,14 +60,33 @@ def augment_pair(low, target, crop, seed, epoch, sample_id):
     axes = ([-1] if horizontal else []) + ([-2] if vertical else [])
     if axes:
         low, target = low.flip(axes), target.flip(axes)
+    if quarter_turn:
+        low = torch.rot90(low, 1, dims=(-2, -1))
+        target = torch.rot90(target, 1, dims=(-2, -1))
     return low.contiguous(), target.contiguous()
 
 
+def saturation_parameters(seed, epoch, sample_id, probability, factor_range):
+    """Independent per-image/epoch RNG; does not perturb crop, D4 or model RNG."""
+    digest = hashlib.sha256(f"paired-saturation-v1:{seed}:{epoch}:{sample_id}".encode()).digest()
+    generator = torch.Generator().manual_seed(int.from_bytes(digest[:8], "little") % (2**63 - 1))
+    applied = bool(torch.rand((), generator=generator) < probability)
+    factor = factor_range[0] + (factor_range[1] - factor_range[0]) * float(torch.rand((), generator=generator))
+    return applied, factor
+
+
 class PairedImages(Dataset):
-    def __init__(self, root: Path, split: str, crop_size=None, seed=100, flip_hv=False):
+    def __init__(self, root: Path, split: str, crop_size=None, seed=100, flip_hv=False,
+                 geometric_augs=False, saturation_probability=0.0,
+                 saturation_range=(0.9, 1.1)):
         self.crop_size = tuple(crop_size) if crop_size is not None and split == "train" else None
         self.flip_hv = bool(flip_hv) and split == "train"
+        self.geometric_augs = bool(geometric_augs) and split == "train"
         self.seed = seed
+        if not 0 <= saturation_probability <= 1 or not (0 < saturation_range[0] <= saturation_range[1]):
+            raise ValueError("Invalid saturation probability or factor range")
+        self.saturation_probability = float(saturation_probability) if split == "train" else 0.0
+        self.saturation_range = tuple(saturation_range)
         if split not in {"train", "val"}:
             raise ValueError("Only train and val splits are supported.")
         low, gt = root / split / "lowlight", root / split / "gt"
@@ -80,24 +100,43 @@ class PairedImages(Dataset):
         return len(self.low)
 
     def __getitem__(self, key):
-        index, epoch = key if isinstance(key, tuple) else (key, 0)
+        quarter_turn = False
+        if isinstance(key, tuple):
+            index, epoch, *orientation = key
+            if orientation:
+                quarter_turn = bool(orientation[0])
+        else:
+            index, epoch = key, 0
+        if self.geometric_augs and (not isinstance(key, tuple) or len(key) != 3):
+            raise ValueError("D4 requires StepBatches with geometric_augs=True for shared batch orientation")
         low, gt = read_rgb(self.low[index]), read_rgb(self.gt[index])
         if low.shape != gt.shape:
             raise ValueError(f"Mismatched paired image shapes: {self.low[index]}")
-        if self.crop_size is not None or self.flip_hv:
-            low, gt = augment_pair(low, gt, self.crop_size, self.seed, epoch, self.low[index].stem)
-        return low, gt
+        if self.crop_size is not None or self.flip_hv or self.geometric_augs:
+            low, gt = augment_pair(low, gt, self.crop_size, self.seed, epoch, self.low[index].stem,
+                                   quarter_turn=quarter_turn and self.geometric_augs)
+        if self.saturation_probability:
+            applied, factor = saturation_parameters(self.seed, epoch, self.low[index].stem,
+                                                   self.saturation_probability, self.saturation_range)
+            if applied:
+                from torchvision.transforms.functional import adjust_saturation
+                low = adjust_saturation(low, factor)
+                gt = adjust_saturation(gt, factor)
+        return low.contiguous(), gt.contiguous()
 
 
 class StepBatches(Sampler):
     """Recreate each epoch's shuffle from seed; resumes at an exact batch.
 
-    Keys carry the epoch for deterministic paired crops and flips.
+    Keys carry the epoch for deterministic paired crops and flips. D4 keys also
+    carry one shared 90-degree rotation bit per batch, keeping rectangles stackable.
     A final short batch is retained each epoch.
     """
-    def __init__(self, count: int, batch: int, seed: int, start: int, stop: int):
+    def __init__(self, count: int, batch: int, seed: int, start: int, stop: int,
+                 geometric_augs=False):
         self.count, self.batch, self.seed = count, batch, seed
         self.start, self.stop = start, stop
+        self.geometric_augs = bool(geometric_augs)
 
     def __len__(self):
         return max(0, self.stop - self.start)
@@ -112,7 +151,13 @@ class StepBatches(Sampler):
                 order = torch.randperm(self.count, generator=generator).tolist()
                 previous_epoch = epoch
             offset = batch_index * self.batch
-            yield [(index, epoch) for index in order[offset:offset + self.batch]]
+            indices = order[offset:offset + self.batch]
+            if self.geometric_augs:
+                digest = hashlib.sha256(f"prior-a-d4:{self.seed}:{step}".encode()).digest()
+                quarter_turn = bool(digest[0] & 1)
+                yield [(index, epoch, quarter_turn) for index in indices]
+            else:
+                yield [(index, epoch) for index in indices]
 
 
 def check_output_location(output: Path, protected: list[Path]):
@@ -221,7 +266,16 @@ def train(args):
         model_config["half_decoder"] = args.half_decoder
     if args.half_encoder_frequency != "none":
         model_config["half_encoder_frequency"] = args.half_encoder_frequency
-    dataset = PairedImages(data, "train", crop_size=args.crop_size, seed=args.seed, flip_hv=args.flip_hv)
+    if args.bottleneck_prior != "none":
+        model_config["bottleneck_prior"] = args.bottleneck_prior
+    if args.illumination_guidance != "none":
+        model_config["illumination_guidance"] = args.illumination_guidance
+    if args.star_refinement != "none":
+        model_config["star_refinement"] = args.star_refinement
+    dataset = PairedImages(data, "train", crop_size=args.crop_size, seed=args.seed,
+                           flip_hv=args.flip_hv, geometric_augs=args.geometric_augs,
+                           saturation_probability=args.saturation_probability,
+                           saturation_range=args.saturation_range)
     steps_per_epoch = math.ceil(len(dataset) / args.batch_size)
     if args.epochs:
         args.steps = args.epochs * steps_per_epoch
@@ -248,6 +302,36 @@ def train(args):
                       f"best_val.pt selected by {'minimum raw L1' if args.best_metric == 'l1' else 'maximum clamped RGB float PSNR'}",
         "resume_policy": "exact epoch/batch shuffle and saved RNG; backend bitwise determinism not guaranteed",
     }
+    config.update(
+        geometric_augs=bool(args.geometric_augs),
+        saturation_probability=args.saturation_probability,
+        saturation_range=list(args.saturation_range),
+        saturation_recipe="paired-torchvision-saturation-independent-image-epoch-v1",
+        saturation_policy="train only; same factor for LQ/GT; val/test unchanged",
+        initialization="from scratch; shared A+MDTA seeded layers preserved",
+    )
+    if args.geometric_augs:
+        image_policy = (f"paired random crop {args.crop_size[0]}x{args.crop_size[1]}"
+                        if args.crop_size else "whole image")
+        config.update(
+            geometric_recipe="d4-batch-quarterturn-image-hv-v1",
+            d4_transform_probability=0.125, d4_quarter_turn_probability=0.5,
+            d4_batch_policy="shared 90-degree rotation bit; independent image horizontal/vertical flips",
+            image_policy=f"train: {image_policy}, paired uniform D4; val/infer: whole image",
+        )
+    config["image_policy"] += (f"; train saturation p={args.saturation_probability}, "
+                               f"factor range={list(args.saturation_range)}")
+    if args.star_refinement != "none":
+        config.update(
+            star_recipe=args.star_refinement,
+            star_bottleneck_blocks=2,
+            star_ffn_expansion=3.0,
+            star_stage_sites=(["after encoder0", "after encoder1", "after decoder1", "after decoder0"]
+                              if args.star_refinement == "multiscale" else []),
+            star_replacement="entire original Spatial Fusion replaced by two full StarBlocks",
+            star_bottleneck_order="encoder2 -> StarBlock -> StarBlock -> unchanged MDTA",
+            star_supervision="final RGB output GT-Mean L1 only",
+        )
     if args.loss_mode == "ms-l1":
         config.update(
             loss="(L1_full + 0.5 * L1_half + 0.25 * L1_quarter) / 1.75 on unclamped encoded RGB",
@@ -265,6 +349,46 @@ def train(args):
             gt_mean_guard="raw L1 fallback for either gray mean <= 1e-6",
             gt_mean_precision="FP32; GT mean used only in training loss",
         )
+    if args.illumination_guidance == "three-stage":
+        config.update(
+            illumination_recipe="explicit-six-three-stage-v1",
+            illumination_inputs=["mean", "rec709", "max", "lightness", "ycgco_y", "rgb_l2"],
+            illumination_widths=[16, 32, 64],
+            illumination_sites=["after half encoder GCB: IG-MSA", "bottom MDTA V", "after half decoder GCB: IG-MSA"],
+            illumination_gate="1+tanh(stage projection); initial one; V only",
+            illumination_attention="complete IG-MSA attention, positional branch, no extra IGAB FFN",
+            illumination_initialization="shared A+MDTA seed preserved; zero gate heads and half-attention output projections",
+            illumination_precision="FP32 descriptors/CNN/gates/V multiplication; AMP backbone and attention",
+            illumination_supervision="final GT-Mean L1 only; prior input low RGB only",
+            illumination_source="https://github.com/caiyuanhao1998/Retinexformer",
+        )
+    if args.illumination_guidance == "bottom-v":
+        config.update(
+            illumination_recipe="explicit-six-bottom-v-v1",
+            illumination_inputs=["mean", "rec709", "max", "lightness", "ycgco_y", "rgb_l2"],
+            illumination_widths=[16, 32, 64],
+            illumination_sites=["bottom MDTA V"],
+            illumination_gate="1+tanh(bottom projection); initial one; V only",
+            illumination_attention="existing bottom MDTA; unchanged Q/K calculation; no additional attention blocks",
+            illumination_initialization="shared A+MDTA seed preserved; zero bottom gate head",
+            illumination_precision="FP32 descriptors/CNN/gate/V multiplication; AMP backbone and attention",
+            illumination_supervision="final GT-Mean L1 only; prior input low RGB only",
+            illumination_source="https://github.com/caiyuanhao1998/Retinexformer",
+        )
+    if args.bottleneck_prior == "lfpv":
+        config.update(
+            lfpv_site="after bottom Spatial Fusion and MDTA, before decoder",
+            lfpv_channels=64, lfpv_vectors=16, lfpv_patches=16, lfpv_patch_size=4,
+            lfpv_updater_layers=7, lfpv_updater_hidden="4c x5, c x1; final c",
+            lfpv_updater_activation="BatchNorm + ReLU; follows published code",
+            lfpv_training="shared encoder/decoder; bypass and SU+MU+query outputs",
+            lfpv_loss_weights=[0.5, 0.5],
+            lfpv_precision="FP32 SU/MU/query/reference buffers; AMP backbone/projections",
+            lfpv_reference_update="detached updater output committed after successful optimizer step",
+            lfpv_eval="query saved references only; no SU/MU or reference updates",
+            lfpv_source="https://github.com/xiaogang00/LFPVS_ICCV",
+        )
+        config["loss"] = "0.5 * GT-Mean L1(bypass) + 0.5 * GT-Mean L1(LFPV-guided)"
     checkpoint = None
     if args.resume:
         checkpoint = torch.load(args.resume, map_location="cpu", weights_only=False)
@@ -275,9 +399,19 @@ def train(args):
         previous.setdefault("loss_mode", "l1")
         previous.setdefault("crop_size", None)
         previous.setdefault("flip_hv", previous.get("crop_size") is not None)
+        previous.setdefault("geometric_augs", False)
+        previous.setdefault("saturation_probability", 0.0)
+        previous.setdefault("saturation_range", [0.9, 1.1])
         keys = ["model", "data_root", "batch_size", "seed", "lr", "weight_decay", "amp", "grad_clip", "lr_schedule", "best_metric", "crop_size", "flip_hv", "loss_mode"]
+        keys.extend(["geometric_augs", "saturation_probability", "saturation_range"])
+        if args.geometric_augs:
+            keys.extend(["geometric_recipe", "d4_transform_probability", "d4_batch_policy"])
         if args.loss_mode == "gt-mean-l1":
             keys.extend(["gt_mean_sigma", "gt_mean_eps"])
+        if args.illumination_guidance in {"three-stage", "bottom-v"}:
+            keys.extend(["illumination_recipe", "illumination_initialization", "illumination_precision"])
+        if args.bottleneck_prior == "lfpv":
+            keys.extend(["lfpv_loss_weights", "lfpv_precision", "lfpv_reference_update"])
         if args.lr_schedule == "cosine":
             keys.extend(["min_lr", "steps"])
         for key in keys:
@@ -305,7 +439,8 @@ def train(args):
     if checkpoint is not None and checkpoint["train_filenames"] != names:
         raise ValueError("Training filename list changed since checkpoint.")
     stop_step = min(args.steps, start_step + args.stop_after) if args.stop_after else args.steps
-    sampler = StepBatches(len(dataset), args.batch_size, args.seed, start_step, stop_step)
+    sampler = StepBatches(len(dataset), args.batch_size, args.seed, start_step, stop_step,
+                          geometric_augs=args.geometric_augs)
     # A dedicated loader generator avoids consuming the model's RNG state.
     loader = DataLoader(dataset, batch_sampler=sampler, num_workers=args.workers,
                         generator=torch.Generator().manual_seed(args.seed + 100000),
@@ -320,7 +455,10 @@ def train(args):
             or args.half_decoder != "gated" or args.half_encoder_frequency != "none") and not args.resume:
         snapshot = run / "code"
         snapshot.mkdir()
-        files = ["model.py", "run_demo.py", "test_best.py"]
+        files = ["model.py", "run_demo.py", "test_best.py", "evaluate_four_metrics.py",
+                 "run_experiment.py", "deployment.json", "README.md"]
+        if args.star_refinement != "none":
+            files.append("star_blocks.py")
         if args.bottleneck_attention == "mdta":
             files.extend(["mdta_blocks.py", "train_mdta.py"])
         if args.loss_mode == "ms-l1":
@@ -333,6 +471,12 @@ def train(args):
             files.extend(["fremlp_blocks.py", "train_fremlp.py"])
         if args.loss_mode == "gt-mean-l1":
             files.extend(["gt_mean_loss.py", "train_gt_mean.py"])
+        if args.bottleneck_prior == "lfpv":
+            files.extend(["lfpv_blocks.py", "train_lfpv.py", "LFPV_SOURCE.md"])
+        if args.illumination_guidance == "three-stage":
+            files.extend(["illumination_blocks.py", "train_illumination.py", "ILLUMINATION_SOURCE.md"])
+        if args.illumination_guidance == "bottom-v":
+            files.extend(["illumination_blocks.py", "train_illumination_v.py", "ILLUMINATION_V_SOURCE.md"])
         for name in dict.fromkeys(files):
             shutil.copyfile(Path(__file__).parent / name, snapshot / name)
     (run / "config.json").write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -351,14 +495,23 @@ def train(args):
                 group["lr"] = learning_rate(config, step)
             low, target = low.to(device), target.to(device)
             optimizer.zero_grad(set_to_none=True)
+            lfpv_paths = None
             with torch.autocast(device_type=device.type, enabled=amp, dtype=torch.float16):
-                output = model(low)
+                if args.bottleneck_prior == "lfpv":
+                    lfpv_paths = model(low, lfpv_training=True)
+                    output = lfpv_paths["output"]
+                else:
+                    output = model(low)
                 if args.loss_mode == "l1":
                     loss = torch.nn.functional.l1_loss(output.float(), target)
             if args.loss_mode == "ms-l1":
                 loss, scale_losses = multiscale_l1(output, target)
             elif args.loss_mode == "gt-mean-l1":
                 loss, gt_mean_diagnostics = gt_mean_l1(output, target, sigma=args.gt_mean_sigma)
+                if lfpv_paths is not None:
+                    refined_loss = loss
+                    base_loss, _ = gt_mean_l1(lfpv_paths["base_output"], target, sigma=args.gt_mean_sigma)
+                    loss = 0.5 * base_loss + 0.5 * refined_loss
             if not torch.isfinite(loss):
                 raise RuntimeError(f"Non-finite loss at step {step}.")
             scaler.scale(loss).backward()
@@ -368,6 +521,9 @@ def train(args):
             previous_scale = scaler.get_scale()
             scaler.step(optimizer)
             scaler.update()
+            skipped = bool(amp and scaler.get_scale() < previous_scale)
+            if lfpv_paths is not None and not skipped:
+                model.lfpv.commit(lfpv_paths["lfpv_update"])
             row = {"step": step, "epoch": (step - 1) // steps_per_epoch + 1,
                    "batch_in_epoch": (step - 1) % steps_per_epoch + 1, "loss": loss.item(),
                    "grad_norm_before_clip": float(grad_norm) if torch.isfinite(grad_norm) else None,
@@ -379,6 +535,11 @@ def train(args):
                                torch.stack(scale_losses).detach().cpu().tolist()))
             if args.loss_mode == "gt-mean-l1":
                 row.update({key: value.item() for key, value in gt_mean_diagnostics.items()})
+            if lfpv_paths is not None:
+                core = model.lfpv.core
+                row.update(lfpv_bypass_loss=base_loss.item(), lfpv_guided_loss=refined_loss.item(),
+                           lfpv_vector_std=core.common_feature.std(unbiased=False).item(),
+                           lfpv_patch_std=core.common_feature_patch.std(unbiased=False).item())
             improved = False
             if val_loader is not None and (step % args.val_every == 0 or step == args.steps):
                 row.update(validate(model, val_loader, device))
@@ -447,6 +608,12 @@ def main():
                           help="Paired training crop with horizontal/vertical flips, each p=0.5")
     training.add_argument("--flip-hv", action="store_true",
                           help="Horizontal/vertical flips each p=0.5, with or without crop")
+    training.add_argument("--geometric-augs", action=argparse.BooleanOptionalAction, default=False,
+                          help="Uniform paired D4; shared rectangle orientation bit per batch")
+    training.add_argument("--saturation-probability", type=float, default=0.0)
+    training.add_argument("--saturation-range", type=float, nargs=2, default=[0.9, 1.1])
+    training.add_argument("--star-refinement", choices=["none", "bottleneck-two", "multiscale"],
+                          default="none")
     training.add_argument("--batch-size", type=int, default=2)
     training.add_argument("--lr", type=float, default=2e-4)
     training.add_argument("--lr-schedule", choices=["constant", "cosine"], default="constant")
@@ -464,6 +631,10 @@ def main():
                           default="gated", help="Half decoder: original, MDTA plus original, or full Restormer replacement")
     training.add_argument("--half-encoder-frequency", choices=["none", "fremlp"],
                           default="none", help="Append a zero-initialized FreMLP modulation after encoder1")
+    training.add_argument("--bottleneck-prior", choices=["none", "lfpv"], default="none",
+                          help="Full LFPV core with shared-decoder dual-path GT-Mean training")
+    training.add_argument("--illumination-guidance", choices=["none", "three-stage", "bottom-v"], default="none",
+                          help="Independent low-image brightness branch: three sites or bottom MDTA V only")
     training.add_argument("--fusion-mode", choices=["gated", "additive", "none", "star"],
                           default="gated",
                           help="Bottleneck fusion; none removes it, star replaces it with one full StarBlock.")
@@ -495,8 +666,12 @@ def main():
         for name in ("steps", "batch_size", "lr", "grad_clip", "width", "save_every", "log_every"):
             if getattr(args, name) <= 0:
                 parser.error(f"--{name.replace('_', '-')} must be positive")
+        if args.bottleneck_prior == "lfpv" and args.loss_mode != "gt-mean-l1":
+            parser.error("LFPV experiment requires --loss-mode gt-mean-l1")
         if args.loss_mode == "gt-mean-l1" and args.gt_mean_sigma <= 0:
             parser.error("--gt-mean-sigma must be positive")
+        if not 0 <= args.saturation_probability <= 1 or not (0 < args.saturation_range[0] <= args.saturation_range[1]):
+            parser.error("Saturation probability must be [0,1] and factor range positive/ordered")
         if args.epochs < 0 or (args.crop_size is not None and min(args.crop_size) <= 0):
             parser.error("epochs must be nonnegative and crop dimensions positive")
         if args.workers < 0 or args.val_every < 0 or args.weight_decay < 0:

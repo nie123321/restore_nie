@@ -1,0 +1,87 @@
+{
+  "run": "a_star_d4_sat_30k_seed100_20260930/star_multiscale",
+  "model": {
+    "width": 24,
+    "spectral_mode": "off",
+    "output_mode": "direct",
+    "bottleneck_attention": "mdta",
+    "star_refinement": "multiscale",
+    "star_bottleneck_blocks": 2,
+    "star_ffn_expansion": 3.0,
+    "star_stage_sites": ["after encoder0", "after encoder1", "after decoder1", "after decoder0"],
+    "parameters": 585367,
+    "reference": "StarIR (TPAMI 2026) StarBlock; bottleneck spectral fusion replaced by 2 StarBlocks"
+  },
+  "loss": {
+    "loss_mode": "gt-mean-l1",
+    "gt_mean_sigma": 0.1,
+    "reference": "Liao et al., ICCV 2025, GT-mean loss"
+  },
+  "training": {
+    "data_root": "/root/autodl-tmp/datasets/cholec80/train_test",
+    "batch_size": 8,
+    "seed": 100,
+    "steps": 30000,
+    "lr": 0.0002,
+    "min_lr": 2e-06,
+    "lr_schedule": "cosine",
+    "weight_decay": 0.0001,
+    "grad_clip": 1,
+    "amp": true,
+    "crop_size": [192, 384],
+    "augmentation": "paired uniform D4 (shared quarter-turn bit, independent h/v flips); saturation p=0.25 factor [0.9, 1.1]; same factor for LQ/GT",
+    "val_every": 500,
+    "save_every": 500,
+    "best_metric": "minimum validation raw L1",
+    "note": "late-stage validation drift on the 30k recipe; best weights are in the first half"
+  },
+  "weights": [
+    {
+      "file": "weights/star_multiscale_seed100_step006500.pt",
+      "step": 6500,
+      "recommended": true,
+      "sha256": "68b83e243cc77557664f36107723eaaae1e25e0dcd7b553a030199182c00f247"
+    },
+    {
+      "file": "weights/star_multiscale_seed100_bestval_step007000.pt",
+      "step": 7000,
+      "recommended": false,
+      "sha256": "cb0d265e5f55e02f060a29b83557d3dd066b280a9fb32394e66f5dffcd5f1121"
+    }
+  ],
+  "test": {
+    "split": "test",
+    "samples": 300,
+    "videos": 12,
+    "precision": "FP32",
+    "quantization": "clamp [0,1], np.rint RGB uint8",
+    "input_psnr": 14.243677,
+    "input_ssim": 0.487758,
+    "input_lpips_alex": 0.341182,
+    "input_ciede2000": 16.921875,
+    "per_checkpoint": {
+      "4000": {"psnr": 25.727632, "ssim": 0.869183, "lpips_alex": 0.198669, "ciede2000": 5.033515, "float_psnr": 25.730526, "raw_l1": 0.045787, "improved": "300/300 all four"},
+      "6500": {"psnr": 25.825054, "ssim": 0.871245, "lpips_alex": 0.193705, "ciede2000": 4.812542, "float_psnr": 25.828135, "raw_l1": 0.044996, "improved": "300/300 all four"},
+      "7000": {"psnr": 25.588773, "ssim": 0.870389, "lpips_alex": 0.196747, "ciede2000": 4.936614, "float_psnr": 25.591554, "raw_l1": 0.046463, "improved": "300/300 all four"},
+      "7500": {"psnr": 25.734851, "ssim": 0.871354, "lpips_alex": 0.202046, "ciede2000": 4.866685, "float_psnr": 25.737716, "raw_l1": 0.045975, "improved": "300/300 all four"},
+      "9500": {"psnr": 25.694955, "ssim": 0.871454, "lpips_alex": 0.197672, "ciede2000": 4.842146, "float_psnr": 25.697975, "raw_l1": 0.045903, "improved": "299/300 psnr, 300/300 ssim/lpips, 299/300 ciede"}
+    },
+    "recommended": "6500"
+  },
+  "paired_vs_champion": {
+    "champion": "a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928 best5500 (test 25.6929 / 0.8672 / 0.2002 / 4.8576)",
+    "n": 300,
+    "psnr": "+0.13212 +/- 0.07676 (t=+1.7)",
+    "ssim": "+0.00407 +/- 0.00072 (t=+5.6)",
+    "lpips_alex": "-0.00651 +/- 0.00074 (t=-8.8)",
+    "ciede2000": "-0.04504 +/- 0.03657 (t=-1.2)"
+  },
+  "error_decomposition": {
+    "split": "test", "samples": 300, "cell": 8,
+    "champion": {"mse": 0.004082, "low_share": 0.8262, "low_luma": 0.4373, "low_chroma": 0.3890, "high_luma": 0.1017, "high_chroma": 0.0720},
+    "multiscale_6500": {"mse": 0.004063, "low_share": 0.8408, "low_luma": 0.4560, "low_chroma": 0.3849, "high_luma": 0.0929, "high_chroma": 0.0662},
+    "delta_mse_units": {"total": -0.000019, "low": "+0.000044", "low_luma": "+0.000068", "low_chroma": "-0.000024", "high_luma": "-0.000038", "high_chroma": "-0.000025"},
+    "brightness_quartile_dpsnr": {"Q1_darkest": "+0.4172 (SE 0.2029)", "Q2": "+0.0274 (SE 0.1430)", "Q3": "+0.0591 (SE 0.1405)", "Q4_brightest": "+0.0248 (SE 0.1114)"}
+  },
+  "notes": "Single seed (100), single 30k run. SSIM/LPIPS gains are significant; PSNR gain is borderline. Gain comes from high-frequency restoration (esp. darkest quartile); low-frequency luminance field is not improved. Weights included on this branch."
+}

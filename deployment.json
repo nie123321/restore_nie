@@ -1,0 +1,91 @@
+{
+  "base_source": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code",
+  "source_files": {
+    "model.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code\\model.py",
+      "sha256": "da3eb87b1bb6adeb867720865fdd0420bd8cd39744850f916400472a1c3164a1"
+    },
+    "run_demo.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code\\run_demo.py",
+      "sha256": "41e7df34086c065af54701b38e6910821357fefc6f342374ee25b955d0c4d1fb"
+    },
+    "mdta_blocks.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code\\mdta_blocks.py",
+      "sha256": "e366ce7829ded3bce546f79e390035ce39ac77d3a9aae8292fd8f30628cfeb33"
+    },
+    "gt_mean_loss.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code\\gt_mean_loss.py",
+      "sha256": "c6f9c3d3fb896151382ce3102a6d32f9cc74e387de0f688c572db83ea1b4aea2"
+    },
+    "test_best.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code\\test_best.py",
+      "sha256": "20e4ab9c93c2d25200269ae37a54c4ca3ece5812d55e944c398a7bb16069d186"
+    },
+    "train_mdta.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code\\train_mdta.py",
+      "sha256": "6b81257d620e219c1108d9eb16d8fe03dbffa00a279449c518c8ae196101abea"
+    },
+    "train_gt_mean.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\runs\\a_mdta_gtmean_crop192x384_hv_b8_e55_seed100_20260928\\code\\train_gt_mean.py",
+      "sha256": "6fc082cdb2bfb6f6537779b23f400fd3c0baa51da63d954b4d60b56fcc67ea15"
+    },
+    "star_blocks.py": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\star_blocks.py",
+      "sha256": "e58f5ac3886c320e0a87f6990c6d6328753652652f5084544bb499db34ec5dc5"
+    },
+    "evaluate_four_metrics.py": {
+      "path": "M:\\picture data\\cholec80_t\\code\\cut\\endo_enhancement_demo\\runs\\A_spatial_fusion_on_off_10k_seed100_20260924\\code\\evaluate_four_metrics.py",
+      "sha256": "03506b454f181611a2b5ef5a68edd6f3f6efcfbdbb54cf0496711cdd510cf4ec"
+    },
+    "D4_geometry": {
+      "path": "M:\\picture data\\cholec80_t\\final\\endo_a\\run_demo.py",
+      "sha256": "b6342750af818f4674c3a6f8f5f0dd27075046e9a2a683c7a33ea37d1130da43",
+      "nodes": [
+        "augment_pair",
+        "PairedImages",
+        "StepBatches"
+      ]
+    }
+  },
+  "changes": [
+    "new Star refinement flags; common initialization preserved",
+    "reuse existing D4 loading and sampling logic",
+    "paired train-only saturation with independent RNG and resume checks",
+    "portable dataset/evaluator paths and training/evaluation wrapper"
+  ],
+  "protocol": {
+    "seed": 100,
+    "steps": 30000,
+    "epochs": null,
+    "batch_size": 8,
+    "crop_size": [
+      192,
+      384
+    ],
+    "D4": "uniform 8 orientations",
+    "saturation_probability": 0.25,
+    "saturation_range": [
+      0.9,
+      1.1
+    ],
+    "loss": "gt-mean-l1",
+    "sigma": 0.1,
+    "val_every": 500,
+    "save_every": 500,
+    "best": "minimum raw validation RGB L1",
+    "test": "one best checkpoint after training"
+  },
+  "code_sha256": {
+    "evaluate_four_metrics.py": "03506b454f181611a2b5ef5a68edd6f3f6efcfbdbb54cf0496711cdd510cf4ec",
+    "gt_mean_loss.py": "c6f9c3d3fb896151382ce3102a6d32f9cc74e387de0f688c572db83ea1b4aea2",
+    "mdta_blocks.py": "e366ce7829ded3bce546f79e390035ce39ac77d3a9aae8292fd8f30628cfeb33",
+    "model.py": "cfc87ce2ba93ae82bdaae0e87eb3fdd8038267af3f386a8500591541ca1a8901",
+    "README.md": "64e01b9ee1faf4b567bf8e0cd39922c85a114b51f8791bdbff498a79a9b5c78b",
+    "run_demo.py": "c0fe8603a5fe64e2d8007ed9b85c935e0ece883e601b5eb3faf30e3cb063379e",
+    "run_experiment.py": "852ab8fc458ea4f8b1d6b500e77037ccfecd425cf56c3960de154dc0d43c8e2a",
+    "star_blocks.py": "e58f5ac3886c320e0a87f6990c6d6328753652652f5084544bb499db34ec5dc5",
+    "test_best.py": "7ac4332833322953845dda9bf31640fec579ba29a46028c856fb12253d26c37e",
+    "train_gt_mean.py": "6fc082cdb2bfb6f6537779b23f400fd3c0baa51da63d954b4d60b56fcc67ea15",
+    "train_mdta.py": "6b81257d620e219c1108d9eb16d8fe03dbffa00a279449c518c8ae196101abea"
+  }
+}

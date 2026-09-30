@@ -21,8 +21,7 @@ from model import EnhancementDemo
 from run_demo import DEFAULT_DATA, read_rgb
 
 
-EVALUATOR = Path(r"M:\picture data\cholec80_t\code\cut\endo_enhancement_demo\runs"
-                 r"\A_spatial_fusion_on_off_10k_seed100_20260924\code\evaluate_four_metrics.py")
+EVALUATOR = Path(__file__).resolve().parent / "evaluate_four_metrics.py"
 MANIFEST_SHA256 = "d969938d27c82e72bd5dce875979e4c2a6c1094c25ae1d7d1267b66e87a68797"
 FIELDS = ["sample_id", "video", "lowlight_relpath", "gt_relpath", "output_filename"]
 

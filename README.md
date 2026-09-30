@@ -1,75 +1,63 @@
-# MDTA-GTMean-A：A 主干 + MDTA 瓶颈 + GT-Mean L1
+# Star-Multiscale-A：A 主干 + MDTA + GT-Mean + 多尺度 Star 块
 
-本分支是 A baseline（width 24、`spectral_mode=off`、`output_mode=direct`）在瓶颈替换为
-Restormer MDTA 注意力、并使用 GT-Mean L1 训练损失的版本，参数量 **245,719**。
-训练协议与 55 epoch 标准一致：整图 448×224、无裁剪无增强、batch 8、seed 100、
-AdamW、梯度裁剪 1、CUDA AMP、cosine 2e-4 → 2e-6、55 epoch / 10,340 步；
-每 500 步验证，按最低验证 raw L1 保存 `best_val.pt`。
+本分支是 MDTA-GTMean-A 的扩展版：把瓶颈处原 Spectral Fusion 替换为 2 个 StarIR（TPAMI 2026）的
+StarBlock，并在 4 个尺度各插入 1 个 StarBlock（encoder0 / encoder1 / decoder1 / decoder0，即
+24 / 48 / 48 / 24 通道），参数量 **585,367**。主干、损失与数据划分同 MDTA-GTMean-A。
 
-## 结构与损失
+## 结构与训练协议
 
-- 瓶颈：`MDTAResidual`（Zamir et al., CVPR 2022 / Restormer 的通道注意力 MDTA + 残差，
-  q/k 归一化、温度系数、depthwise conv；无额外 GDFN），`mdta_blocks.py`。
-- 损失：GT-Mean L1（Liao et al., ICCV 2025；`gt_mean_loss.py`），与官方实现一致：
+- 瓶颈顺序：`encoder2 -> StarBlock -> StarBlock -> MDTA`。StarModule 为 8×8 patch 的可学习
+  FFT 滤波 + 空间门控 + 扩张 FFN（`star_blocks.py`）。
+- 损失：GT-Mean L1（sigma 0.1；`gt_mean_loss.py`）。
+- 数据 / 预算（seed 100）：paired random crop 192×384；整批共享 90° 旋转位 + 每图独立水平/垂直翻转
+  （D4）；饱和度扰动 p=0.25、因子 [0.9, 1.1]（LQ/GT 同因子）。30,000 步、batch 8、AdamW
+  2e-4 → 2e-6 cosine、wd 1e-4、clip 1、AMP、workers 0；每 500 步验证/保存，按最低验证 raw L1
+  保存 `best_val.pt`。
+- 后段 val 出现已知漂移（30k 配方现象），最佳权重集中在前段。
 
-```
-W = clip(Bhattacharyya distance(mean_gray(pred), mean_gray(GT)), 0, 1)   # detached
-loss = W * L1(pred, GT) + (1 - W) * L1(clamp(gain * pred, 0, 1), GT)
-gain = mean_gray(GT) / mean_gray(pred)                                    # differentiable
-```
+## Test 结果（300 张、12 视频；clamp + rint uint8 四指标）
 
-GT 的灰度均值只参与训练损失，推理不需要 GT。sigma=0.1；灰度均值 ≤1e-6 时回退原始 L1。
+输入基线：PSNR 14.243677 / SSIM 0.487758 / LPIPS 0.341182 / CIEDE2000 16.921875。
 
-## 结果
+| step | PSNR ↑ | SSIM ↑ | LPIPS ↓ | CIEDE2000 ↓ |
+|---:|---:|---:|---:|---:|
+| 4000 | 25.727632 | 0.869183 | 0.198669 | 5.033515 |
+| **6500（推荐）** | **25.825054** | 0.871245 | **0.193705** | **4.812542** |
+| 7000（best_val） | 25.588773 | 0.870389 | 0.196747 | 4.936614 |
+| 7500 | 25.734851 | 0.871354 | 0.202046 | 4.866685 |
+| 9500 | 25.694955 | 0.871454 | 0.197672 | 4.842146 |
 
-- `best_val.pt` 在 5,500 步：验证 raw L1 0.049144，clamp 后 FP32 PSNR 25.0835。
-- 训练于 10,340 步完整结束；峰值显存 3,686.9 MiB。
-- checkpoint SHA256 与完整配置见 `result_mdta_gtmean_best5500.json`。
-
-Test（300 张、12 个视频，clamp + round PNG 四指标；输入基线 PSNR 14.243677 / SSIM 0.487758 /
-LPIPS 0.341095 / CIEDE2000 16.921876）：
-
-| 版本 | PSNR ↑ | SSIM ↑ | LPIPS ↓ | CIEDE2000 ↓ |
-|---|---:|---:|---:|---:|
-| **MDTA-GTMean-A（本分支，best5500）** | **25.643097** | 0.866133 | 0.198554 | **4.850180** |
-| 原 U3（7.15M 参数，历史） | 25.546591 | 0.866792 | 0.197788 | 5.055436 |
-| A＋MDTA（无 GT-Mean 损失） | 25.503275 | 0.865625 | 0.202940 | 5.030903 |
-| Retinexformer 重训 | 25.456256 | 0.868613 | 0.203084 | 5.147427 |
-| A baseline（width24，55ep） | 25.448755 | 0.864963 | 0.200453 | 5.086370 |
-
-配对检验（300 张逐图差分，正值表示本版本更高）：
+配对检验（vs 冠军 MDTA-GTMean crop+hv best5500，300 张逐图差分；正值=更高）：
 
 | 对比 | ΔPSNR | ΔSSIM | ΔLPIPS | ΔCIEDE2000 |
 |---|---:|---:|---:|---:|
-| vs A baseline | +0.194 ± 0.100（t=1.93） | +0.0012（n.s.） | −0.0019（t=−4.9） | −0.236（t=−4.7） |
-| vs A＋MDTA | +0.140 ± 0.087（t=1.61） | +0.0005（n.s.） | −0.0044（t=−12.4） | −0.181（t=−4.1） |
+| star_multiscale@6500 | +0.132 ± 0.077（t=1.7） | **+0.0041（t=5.6）** | **−0.0065（t=−8.8）** | −0.045（t=−1.2） |
 
-结论：PSNR 与 CIEDE2000 为目前全部版本最好；LPIPS、CIEDE2000 的提升统计显著，
-PSNR 临界显著。单 seed 结果，PSNR 的 +0.19 仍建议用多 seed 复核。
+误差分解（test 300，8×8 cell，相对冠军）：高频亮度 **−9.1%**、高频色度 **−8.5%**、低频亮度
++3.8%、总 MSE −0.5%。按输入亮度四分位，最暗 1/4 的 ΔPSNR **+0.42**，其余 +0.02~0.06。
+即：提升来自高频（结构/细节）与暗图，全局低频亮度场未改善。
+
+## 权重
+
+- `weights/star_multiscale_seed100_step006500.pt`（推荐；step 6500）
+  SHA256 `68b83e243cc77557664f36107723eaaae1e25e0dcd7b553a030199182c00f247`
+- `weights/star_multiscale_seed100_bestval_step007000.pt`（best_val；step 7000）
+  SHA256 `cb0d265e5f55e02f060a29b83557d3dd066b280a9fb32394e66f5dffcd5f1121`
+
+checkpoint 格式：`torch.load(...)["model"]` + `["config"]["model"]`；可用
+`test_best.py --checkpoint <权重> --data-root <数据根> --output-dir <空目录>` 复现四指标。
 
 ## 文件
 
-- `model.py`、`run_demo.py`：训练时使用的代码快照（与 run 目录 `code/` 一致）。
-- `mdta_blocks.py`：MDTA 注意力残差。
-- `gt_mean_loss.py`：GT-Mean L1。
-- `star_blocks.py`、`restormer_blocks.py`、`fremlp_blocks.py`：`model.py` 的可选依赖。
-- `test_best.py`、`evaluate_four_metrics.py`：test 300 推理 + 四指标评测（脚本内为本地绝对路径，
-  迁移时需修改）。
-- `result_mdta_gtmean_best5500.json`：配置与结果摘要。
-- 未上传 `runs/`：权重、日志、逐张指标与 PNG 均保留在本地工作区。
+- `model.py`、`run_demo.py`：训练代码快照（D4 / 饱和度增强、`star_refinement` 实现）。
+- `star_blocks.py`：StarIR StarBlock / StarModule / DFFN。
+- `mdta_blocks.py`、`gt_mean_loss.py`：MDTA 与 GT-Mean L1。
+- `run_experiment.py`：三变体（a / star_bottom2 / star_multiscale）实验驱动。
+- `test_best.py`、`evaluate_four_metrics.py`：test 300 推理 + 四指标（脚本内含服务器绝对路径，迁移需改）。
+- `deployment.json`、`preflight.json`：部署与预检记录。
+- `result_star_multiscale_seed100_30k.json`：配置、逐 checkpoint 指标与配对检验。
 
-## 运行
+## 边界
 
-```powershell
-$py = 'M:\Anaconda_envs\envs\retinexformer\python.exe'
-& $py -u -X utf8 run_demo.py train --run-dir runs/a_mdta_gtmean_l1_sigma01_whole_b8_e55_seed100_20260928 `
-    --epochs 55 --batch-size 8 --seed 100 --lr 2e-4 --lr-schedule cosine --min-lr 2e-6 `
-    --weight-decay 1e-4 --grad-clip 1.0 --val-every 500 --save-every 1000 --best-metric l1 `
-    --width 24 --spectral-mode off --output-mode direct --bottleneck-attention mdta `
-    --loss-mode gt-mean-l1 --gt-mean-sigma 0.1 --amp --device cuda --workers 0
-```
-
-测试：`test_best.py --checkpoint runs/.../best_val.pt --output-dir runs/.../test_best5500_20260928`。
-
-边界：本分支仅记录一次 seed=100、55 epoch 标准协议的训练与 test；不代表其它 sigma、
-其它模块组合或多种子平均结果。
+单 seed（100）、单次 30k 协议；推荐权重 step 6500。SSIM / LPIPS 增益统计显著，PSNR 增益临界显著。
+后续建议：多 seed 复核与权重平均（SWA）；低频亮度场需要独立手段。

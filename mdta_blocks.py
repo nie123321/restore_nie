@@ -15,9 +15,12 @@ class MDTAAttention(nn.Module):
         self.qkv = nn.Conv2d(channels, 3*channels, 1, bias=False)
         self.qkv_dwconv = nn.Conv2d(3*channels, 3*channels, 3, padding=1, groups=3*channels, bias=False)
         self.project_out = nn.Conv2d(channels, channels, 1, bias=False)
-    def forward(self, x):
+    def forward(self, x, illumination=None):
         b,c,h,w = x.shape
         q,k,v = self.qkv_dwconv(self.qkv(x)).chunk(3, dim=1)
+        if illumination is not None:
+            from illumination_blocks import guided_value
+            v = guided_value(v, illumination)
         shape = (b,self.heads,c//self.heads,h*w)
         q,k,v = (t.reshape(shape) for t in (q,k,v))
         q,k = F.normalize(q,dim=-1), F.normalize(k,dim=-1)
@@ -29,5 +32,5 @@ class MDTAResidual(nn.Module):
         super().__init__()
         self.norm = norm_layer(channels)
         self.attn = MDTAAttention(channels,heads)
-    def forward(self,x):
-        return x + self.attn(self.norm(x))
+    def forward(self,x,illumination=None):
+        return x + self.attn(self.norm(x), illumination=illumination)

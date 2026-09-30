@@ -150,10 +150,14 @@ class StarFusion(nn.Module):
     own residual connections, so the adapter adds no second residual path.
     """
 
-    def __init__(self, channels: int):
+    def __init__(self, channels: int, blocks: int = 1):
         super().__init__()
         from star_blocks import StarBlock
-        self.block = StarBlock(channels, ffn_expansion_factor=3.0)
+        if blocks < 1:
+            raise ValueError("Star blocks must be positive")
+        self.block = (StarBlock(channels, ffn_expansion_factor=3.0) if blocks == 1 else
+                      nn.Sequential(*[StarBlock(channels, ffn_expansion_factor=3.0)
+                                      for _ in range(blocks)]))
 
     def forward(self, x: Tensor, condition: Tensor):
         return self.block(x), None
@@ -229,7 +233,8 @@ class EnhancementDemo(nn.Module):
     def __init__(self, width: int = 24, spectral_mode: str = "conditional",
                  output_mode: str = "structured", fusion_mode: str = "gated",
                  bottleneck_attention: str = "none", half_decoder: str = "gated",
-                 half_encoder_frequency: str = "none"):
+                 half_encoder_frequency: str = "none", bottleneck_prior: str = "none",
+                 illumination_guidance: str = "none", star_refinement: str = "none"):
         super().__init__()
         if width < 4:
             raise ValueError("width must be >= 4")
@@ -245,7 +250,24 @@ class EnhancementDemo(nn.Module):
             raise ValueError("Full StarBlock owns its FFT; use spectral_mode=off with fusion_mode=star")
         if half_encoder_frequency not in {"none", "fremlp"}:
             raise ValueError(f"Unsupported half encoder frequency: {half_encoder_frequency}")
+        if bottleneck_prior not in {"none", "lfpv"}:
+            raise ValueError(f"Unsupported bottleneck prior: {bottleneck_prior}")
+        if illumination_guidance not in {"none", "three-stage", "bottom-v"}:
+            raise ValueError(f"Unsupported illumination guidance: {illumination_guidance}")
+        if illumination_guidance in {"three-stage", "bottom-v"} and (bottleneck_attention != "mdta"
+                or half_decoder != "gated" or half_encoder_frequency != "none"
+                or bottleneck_prior != "none"):
+            raise ValueError("Brightness guidance requires bottom MDTA, original half blocks and no LFPV")
+        if star_refinement not in {"none", "bottleneck-two", "multiscale"}:
+            raise ValueError(f"Unsupported Star refinement: {star_refinement}")
+        if star_refinement != "none" and (spectral_mode != "off" or output_mode != "direct"
+                or fusion_mode != "gated" or bottleneck_attention != "mdta"
+                or half_decoder != "gated" or half_encoder_frequency != "none"
+                or bottleneck_prior != "none" or illumination_guidance != "none"):
+            raise ValueError("Star comparisons require the unchanged A+MDTA direct baseline")
         self.config = dict(width=width, spectral_mode=spectral_mode, output_mode=output_mode)
+        if star_refinement != "none":
+            self.config["star_refinement"] = star_refinement
         if fusion_mode != "gated":
             self.config["fusion_mode"] = fusion_mode
         if bottleneck_attention != "none":
@@ -254,6 +276,10 @@ class EnhancementDemo(nn.Module):
             self.config["half_decoder"] = half_decoder
         if half_encoder_frequency != "none":
             self.config["half_encoder_frequency"] = half_encoder_frequency
+        if bottleneck_prior != "none":
+            self.config["bottleneck_prior"] = bottleneck_prior
+        if illumination_guidance != "none":
+            self.config["illumination_guidance"] = illumination_guidance
         self.output_mode = output_mode
         self.max_log_gain = math.log(32.0)
         self.max_log_color = math.log(2.0)
@@ -324,17 +350,51 @@ class EnhancementDemo(nn.Module):
             from fremlp_blocks import FreMLPResidual
             self.half_encoder_fremlp = FreMLPResidual(2 * width, LayerNorm2d)
 
+        # Construct last to preserve all shared A+MDTA initialization draws.
+        self.lfpv = None
+        if bottleneck_prior == "lfpv":
+            from lfpv_blocks import BottomLFPV
+            self.lfpv = BottomLFPV(4 * width)
+
+        # Independent brightness branch is initialized after all shared weights.
+        self.luma_guidance = None
+        if illumination_guidance == "three-stage":
+            from illumination_blocks import ThreeStageIllumination
+            self.luma_guidance = ThreeStageIllumination(width, LayerNorm2d)
+        elif illumination_guidance == "bottom-v":
+            from illumination_blocks import BottomVIllumination
+            self.luma_guidance = BottomVIllumination(width)
+
+        # Add new modules after every common layer, preserving seeded A+MDTA weights.
+        self.star_encoder0 = self.star_encoder1 = None
+        self.star_decoder1 = self.star_decoder0 = None
+        if star_refinement != "none":
+            self.spectral = StarFusion(4 * width, blocks=2)
+        if star_refinement == "multiscale":
+            from star_blocks import StarBlock
+            self.star_encoder0 = StarBlock(width, ffn_expansion_factor=3.0)
+            self.star_encoder1 = StarBlock(2 * width, ffn_expansion_factor=3.0)
+            self.star_decoder1 = StarBlock(2 * width, ffn_expansion_factor=3.0)
+            self.star_decoder0 = StarBlock(width, ffn_expansion_factor=3.0)
+
     @staticmethod
     def _resize(x: Tensor, shape) -> Tensor:
         return F.interpolate(x, size=shape, mode="bilinear", align_corners=False)
 
-    def forward(self, x: Tensor, return_aux: bool = False):
+    def forward(self, x: Tensor, return_aux: bool = False, lfpv_training: bool = False):
         if x.ndim != 4 or x.shape[1] != 3 or min(x.shape[-2:]) < 1:
             raise ValueError("Expected nonempty NCHW RGB tensor")
+        luma_gates = self.luma_guidance.make_gates(x) if self.luma_guidance is not None else None
         skip0 = self.encoder0(self.stem(x))
+        if self.star_encoder0 is not None:
+            skip0 = self.star_encoder0(skip0)
         skip1 = self.encoder1(self.down1(skip0))
+        if self.star_encoder1 is not None:
+            skip1 = self.star_encoder1(skip1)
         if self.half_encoder_fremlp is not None:
             skip1 = self.half_encoder_fremlp(skip1)
+        if luma_gates is not None and "encoder" in luma_gates:
+            skip1 = self.luma_guidance.encoder_attention(skip1, luma_gates["encoder"])
         bottom = self.encoder2(self.down2(skip1))
         pooled = bottom.mean(dim=(-2, -1))
         if self.output_mode == "structured":
@@ -354,7 +414,23 @@ class EnhancementDemo(nn.Module):
         else:
             bottom, spectral_weights = self.spectral(bottom, condition)
         if self.mdta is not None:
-            bottom = self.mdta(bottom)
+            bottom = self.mdta(bottom, illumination=luma_gates["bottom"]) if luma_gates is not None else self.mdta(bottom)
+        if lfpv_training:
+            if self.lfpv is None or not self.training or return_aux:
+                raise ValueError("Dual-path LFPV forward requires its training mode")
+            base_output = self._decode_features(x, skip0, skip1, bottom,
+                                                color_gain, log_gain_small, spectral_weights)
+            refined_bottom, update = self.lfpv.update_and_query(bottom)
+            output = self._decode_features(x, skip0, skip1, refined_bottom,
+                                           color_gain, log_gain_small, spectral_weights)
+            return {"output": output, "base_output": base_output, "lfpv_update": update}
+        if self.lfpv is not None:
+            bottom = self.lfpv(bottom)
+        return self._decode_features(x, skip0, skip1, bottom, color_gain,
+                                     log_gain_small, spectral_weights, return_aux, luma_gates=luma_gates)
+
+    def _decode_features(self, x, skip0, skip1, bottom, color_gain,
+                         log_gain_small, spectral_weights, return_aux=False, luma_gates=None):
         feature = self.fuse1(torch.cat((self._resize(bottom, skip1.shape[-2:]), skip1), dim=1))
         if self.output_mode == "structured":
             light = self._resize(log_gain_small / self.max_log_gain, feature.shape[-2:])
@@ -362,11 +438,17 @@ class EnhancementDemo(nn.Module):
         if self.half_mdta is not None:
             feature = self.half_mdta(feature)
         feature = self.decoder1(feature)
+        if self.star_decoder1 is not None:
+            feature = self.star_decoder1(feature)
+        if luma_gates is not None and "decoder" in luma_gates:
+            feature = self.luma_guidance.decoder_attention(feature, luma_gates["decoder"])
         feature = self.fuse0(torch.cat((self._resize(feature, skip0.shape[-2:]), skip0), dim=1))
         if self.output_mode == "structured":
             light = self._resize(log_gain_small / self.max_log_gain, feature.shape[-2:])
             feature = feature * (1 + 0.1 * torch.tanh(self.gain_condition0(light)))
         feature = self.decoder0(feature)
+        if self.star_decoder0 is not None:
+            feature = self.star_decoder0(feature)
 
         gain = self._resize(log_gain_small, x.shape[-2:]).exp()
         coarse = x * gain * color_gain
