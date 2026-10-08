@@ -1,0 +1,17 @@
+{
+  "result": "ENGINE_FIXTURE_PASS",
+  "variant": "v2-bottom-interleaved-20261008",
+  "syntax_files": 26,
+  "default_launcher_protocol_checked": true,
+  "fixture_data": "M:\\picture data\\cholec80_t\\code\\cut\\analysis\\regional_context_mdta_buildcheck_20261008\\fixture_data",
+  "fixture_batch_size": 1,
+  "fixture_workers": 0,
+  "fixture_first_steps": 3,
+  "fixture_resume_step": 4,
+  "cosine_horizon": 100000,
+  "validation_selected_checkpoint_created": true,
+  "amp": false,
+  "tf32": false,
+  "formal_dataset_images_read": 0,
+  "formal_training_started": false
+}
