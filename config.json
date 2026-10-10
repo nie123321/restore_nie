@@ -1,0 +1,19 @@
+{
+  "steps": 100000,
+  "batch_size": 8,
+  "crop_size": [128, 128],
+  "seed": 100,
+  "workers": 4,
+  "lr": 0.0002,
+  "min_lr": 0.000002,
+  "lr_schedule": "cosine",
+  "weight_decay": 0.0001,
+  "grad_clip": 1.0,
+  "geometric_augs": true,
+  "saturation_probability": 0.25,
+  "saturation_range": [0.9, 1.1],
+  "gt_mean_sigma": 0.1,
+  "fft_weight": 0.1,
+  "val_every": 500,
+  "save_every": 500
+}

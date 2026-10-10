@@ -1,3 +1,7 @@
 torch>=2.8
+torchvision
 numpy
 Pillow
+opencv-python
+lpips
+scikit-image
