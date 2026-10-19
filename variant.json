@@ -1,0 +1,13 @@
+{
+  "id": "v3-mswf-B-vgg0005-20261019",
+  "candidate": "B",
+  "base": "B_joint_subband_residual",
+  "parameters": 940427,
+  "original_parameters": 1063115,
+  "width": 24,
+  "lfgsi_blocks": 2,
+  "v3_theta": "Two independent 1x96x1x1 parameters, 2*sigmoid(theta)",
+  "initialization": "Fresh seed-100 V3 constructed completely, then only MSWF frequency processors replaced; no checkpoint loaded",
+  "description": "两级小波各用独立的四子带联合残差块：四子带分别归一化后拼接，PW(4C→C/2)→DW3→GELU→PW(C/2→4C)，拆为四路修正，加回原始子带。输出 PW 零初始化。替换原低频专用仿射与高频独立处理。",
+  "loss": "GT-Mean L1 + 0.1 FFT L1 + 0.005 VGG19 relu3_3 MSE"
+}

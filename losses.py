@@ -43,6 +43,37 @@ def gt_mean_fft_l1(output: torch.Tensor, target: torch.Tensor, sigma: float=0.1,
     if not math.isfinite(fft_weight) or fft_weight < 0:
         raise ValueError('FFT loss weight must be finite and nonnegative.')
     (base, parts) = gt_mean_l1(output, target, sigma=sigma)
-    frequency = complex_fft_l1(output, target)
+    frequency = complex_fft_l1(output, target) if fft_weight else base.new_zeros(())
     weighted_frequency = fft_weight * frequency
     return (base + weighted_frequency, {**parts, 'loss_gt_mean': base.detach(), 'loss_fft': frequency.detach(), 'loss_fft_weighted': weighted_frequency.detach()})
+
+
+class VGGPerceptualMSE(torch.nn.Module):
+    """Frozen ImageNet VGG19 features[:16] (relu3_3), final-feature MSE (same as P1)."""
+    def __init__(self, weights_file):
+        super().__init__()
+        with torch.random.fork_rng(devices=[]):
+            layers, channels = [], 3
+            for output in (64, 64, 'M', 128, 128, 'M', 256, 256, 256):
+                if output == 'M':
+                    layers.append(torch.nn.MaxPool2d(kernel_size=2, stride=2))
+                else:
+                    layers.extend((torch.nn.Conv2d(channels, output, 3, padding=1), torch.nn.ReLU(inplace=True)))
+                    channels = output
+            self.features = torch.nn.Sequential(*layers)
+        self.features.load_state_dict(torch.load(weights_file, map_location='cpu', weights_only=True), strict=True)
+        self.features.requires_grad_(False)
+        self.register_buffer('mean', torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+        self.register_buffer('std', torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+        self.eval()
+
+    def train(self, mode=True):
+        super().train(False)
+        return self
+
+    def forward(self, prediction, target):
+        with torch.autocast(device_type=prediction.device.type, enabled=False):
+            predicted = self.features((prediction.float() - self.mean) / self.std)
+            with torch.no_grad():
+                reference = self.features((target.float() - self.mean) / self.std)
+            return F.mse_loss(predicted, reference)

@@ -1,0 +1,43 @@
+{
+  "steps": 100000,
+  "batch_size": 8,
+  "crop_size": [
+    128,
+    128
+  ],
+  "seed": 100,
+  "workers": 2,
+  "lr": 0.0002,
+  "min_lr": 2e-06,
+  "lr_schedule": "cosine",
+  "weight_decay": 0.0001,
+  "grad_clip": 1.0,
+  "geometric_augs": true,
+  "saturation_probability": 0.25,
+  "saturation_range": [
+    0.9,
+    1.1
+  ],
+  "gt_mean_sigma": 0.1,
+  "fft_weight": 0.1,
+  "save_every": 500,
+  "cosine_steps": 100000,
+  "eval_every": 500,
+  "eval_split": "test",
+  "eval_domain": "rgb_uint8",
+  "data_root": "/root/autodl-tmp/datasets/test",
+  "amp": false,
+  "loss_mode": "gt-mean-fft",
+  "training_protocol": "v3-mswf-ab-20261019-vgg0005",
+  "vgg_weight": 0.005,
+  "vgg_weights_file": "weights/vgg19_features16.pth",
+  "model": {
+    "width": 24,
+    "experiment_variant": "v3-mswf-joint-subband-residual-20261019"
+  },
+  "split_manifest": {
+    "path": "/root/autodl-tmp/datasets/test/split_manifest.csv",
+    "sha256": "7f7b4cc65b152adb89dec9c84cfc7330253f015b912c8ba0202d1a57fe1b227b"
+  },
+  "source_sha256": "8b71c27321216d0d0e31c5aac7dcdf9e518e667a96c89b94e432cabe27787cc5"
+}

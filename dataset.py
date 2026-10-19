@@ -64,8 +64,8 @@ class PairedImages(Dataset):
             raise ValueError('Invalid saturation probability or factor range')
         self.saturation_probability = float(saturation_probability) if split == 'train' else 0.0
         self.saturation_range = tuple(saturation_range)
-        if split not in {'train', 'val'}:
-            raise ValueError('Only train and val splits are supported.')
+        if split not in {'train', 'val', 'test'}:
+            raise ValueError('Supported splits are train, val and test.')
         (low, gt) = (root / split / 'lowlight', root / split / 'gt')
         self.low = image_files(low)
         targets = {p.name: p for p in image_files(gt)}
