@@ -1,0 +1,69 @@
+{
+  "sha256": "3e856379601a341b33820332aeacfbceaa8d020aaff51ed23709a31a04df0219",
+  "files": [
+    {
+      "path": "config.json",
+      "sha256": "02df2be1f170f312d1d1010d3061b0eda0b475c3ad6e54313020c2b960fe25f7"
+    },
+    {
+      "path": "dataset.py",
+      "sha256": "1fa933209af09ce0dd7595e9873119916dc59695ea1927914423fc0acd7b8dc6"
+    },
+    {
+      "path": "losses.py",
+      "sha256": "99da754adf241f69e576ccc145211d0a004850077fb39856710099eb5dff65b7"
+    },
+    {
+      "path": "metrics.py",
+      "sha256": "d06149fbac33ca36fcc9c2ee1988c0040ac1df17f5bb4b5edff9b49e4c96a588"
+    },
+    {
+      "path": "models/__init__.py",
+      "sha256": "b6a9763952ce7136f14a3a257bb8a5f474834524c58d8189f3c82d9042557394"
+    },
+    {
+      "path": "models/blocks.py",
+      "sha256": "c69e5aab59293ac29a0b2c9258f12d21f3f7e6d59bf72e2539eb77c3b87b6451"
+    },
+    {
+      "path": "models/checkpoint.py",
+      "sha256": "4b1621f07d10d168192a68c0f1731b95ea62ffd7a46538e3fcc88c7fcb9475a3"
+    },
+    {
+      "path": "models/mswf_variant.py",
+      "sha256": "e49818f411480526018aa521f99df4df89dfb41d742513be3319b5f20d3188b2"
+    },
+    {
+      "path": "models/network.py",
+      "sha256": "5568f642d9c154369a4f0f3326e30c47861567594db1e9cefc3099a04fe16cc0"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "2829d573d359a57995692a31981871618ec46f893d8cb6ae000828e268aeafa9"
+    },
+    {
+      "path": "runtime_utils.py",
+      "sha256": "b0dd6233bbfcdc7661c3980507bbd821b5918b5779a4d3fe3f8e632f72aec781"
+    },
+    {
+      "path": "test.py",
+      "sha256": "309f77ebc4e2567493f3a96ed520d663478f1adc273d286dee8050383535c00d"
+    },
+    {
+      "path": "train.py",
+      "sha256": "9091045d29ef083483afd237e71de8c8c0578f31440bd5cab336d4049d85e0af"
+    },
+    {
+      "path": "train_local.ps1",
+      "sha256": "9c951cfe3daac18c49e105bd4feb75a7f9955ae14c9454a8178b615214732389"
+    },
+    {
+      "path": "train_server.sh",
+      "sha256": "3e341e7d81f09e2189d9ead7d5e8f5028983dcdd882147c94411c0f47573b2e6"
+    },
+    {
+      "path": "variant.json",
+      "sha256": "6ad19237f834e27a66478aee5a7781e031a681f352a53714ce4b9a02f36129e2"
+    }
+  ]
+}

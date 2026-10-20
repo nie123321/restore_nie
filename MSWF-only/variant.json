@@ -1,0 +1,14 @@
+{
+  "id": "final-b-mswf-only-vgg0005-20261019",
+  "title": "Final B MSWF-only ablation with VGG19 weight 0.005",
+  "parameters": 688707,
+  "reference_parameters": 940427,
+  "width": 24,
+  "mswf_blocks": 11,
+  "lfgsi_blocks": 0,
+  "v3_theta": "Removed with the two LFGSI blocks",
+  "replacement": "Identity bypass; no replacement convolution or attention blocks",
+  "initialization": "Random seed 100 by default, reference shared initialization preserved; from scratch",
+  "loss": "GT-Mean L1 + 0.1 unnormalized complex FFT L1 + 0.005 VGG19 relu3_3 MSE",
+  "training": "Exact numeric settings from the final B recorded run, including workers=2"
+}
